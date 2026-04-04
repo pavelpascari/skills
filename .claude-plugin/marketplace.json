@@ -12,7 +12,7 @@
   "plugins": [
     {
       "name": "test-code-review",
-      "source": "./test-code-review",
+      "source": "./plugins/test-code-review",
       "description": "Review test code changes for correctness, catching weakened assertions and tests rewritten to match buggy behavior.",
       "version": "1.0.0",
       "author": {
