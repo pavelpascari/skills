@@ -3,6 +3,7 @@ name: test-code-review
 description: >
   Use when test files are written or modified, or user asks to "review tests" or "check test changes".
   Catches weakened assertions, missing coverage, and tests rewritten to match buggy behavior.
+user-invocable: true
 ---
 
 # Test Code Review
