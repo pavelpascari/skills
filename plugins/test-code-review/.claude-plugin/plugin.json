@@ -1,0 +1,13 @@
+{
+  "name": "test-code-review",
+  "description": "Review test code changes for correctness, catching weakened assertions and tests rewritten to match buggy behavior.",
+  "version": "1.0.0",
+  "author": {
+    "name": "Pavel Pascari",
+    "email": "pavel@ppascari.com"
+  },
+  "homepage": "https://github.com/pavelpascari/skills",
+  "repository": "https://github.com/pavelpascari/skills",
+  "license": "MIT",
+  "keywords": ["testing", "code-review", "assertions", "quality"]
+}

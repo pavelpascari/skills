@@ -1,0 +1,27 @@
+{
+  "name": "skills",
+  "owner": {
+    "name": "Pavel Pascari",
+    "email": "pavel@ppascari.com"
+  },
+  "metadata": {
+    "description": "A curated Claude Code plugin marketplace by Pavel Pascari",
+    "version": "1.0.0",
+    "pluginRoot": "./plugins"
+  },
+  "plugins": [
+    {
+      "name": "test-code-review",
+      "source": "./test-code-review",
+      "description": "Review test code changes for correctness, catching weakened assertions and tests rewritten to match buggy behavior.",
+      "version": "1.0.0",
+      "author": {
+        "name": "Pavel Pascari",
+        "email": "pavel@ppascari.com"
+      },
+      "license": "MIT",
+      "keywords": ["testing", "code-review", "assertions", "quality"],
+      "category": "quality"
+    }
+  ]
+}
