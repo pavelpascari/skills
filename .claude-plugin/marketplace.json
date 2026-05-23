@@ -22,6 +22,19 @@
       "license": "MIT",
       "keywords": ["testing", "code-review", "assertions", "quality"],
       "category": "quality"
+    },
+    {
+      "name": "software-engineering",
+      "source": "./plugins/software-engineering",
+      "description": "Encodes a coherent set of software engineering principles to apply during coding tasks.",
+      "version": "1.0.0",
+      "author": {
+        "name": "Pavel Pascari",
+        "email": "pavel@ppascari.com"
+      },
+      "license": "MIT",
+      "keywords": ["software-engineering", "principles", "code-quality", "tdd", "architecture", "code-review"],
+      "category": "quality"
     }
   ]
 }
