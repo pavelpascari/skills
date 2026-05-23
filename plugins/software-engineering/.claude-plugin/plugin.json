@@ -1,0 +1,13 @@
+{
+  "name": "software-engineering",
+  "description": "Encodes a coherent set of software engineering principles to apply during coding tasks.",
+  "version": "1.0.0",
+  "author": {
+    "name": "Pavel Pascari",
+    "email": "pavel@ppascari.com"
+  },
+  "homepage": "https://github.com/pavelpascari/skills",
+  "repository": "https://github.com/pavelpascari/skills",
+  "license": "MIT",
+  "keywords": ["software-engineering", "principles", "code-quality", "tdd", "architecture", "code-review"]
+}
