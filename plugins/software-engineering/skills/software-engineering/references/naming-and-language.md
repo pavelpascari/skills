@@ -63,7 +63,7 @@ for chunk in chunked(items, 200):
     upstream.send(chunk)
 ```
 
-**Notes by language:**
+**Notes by language** — the principle is universal; apply it the way each language is idiomatic:
 - **Go:** exported identifiers should have a doc comment starting with the identifier name (`// Order represents ...`). The toolchain enforces this in some configs.
 - **Python:** docstrings are part of the runtime (`__doc__`), so they double as machine-readable API descriptions.
 - **TypeScript:** JSDoc (`/** ... */`) integrates with editor tooling for hover hints — worth writing on exported types/functions.

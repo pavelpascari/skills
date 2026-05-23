@@ -113,7 +113,7 @@ def update_order(o, quantity):
 # Run the full suite. Confirm: no regressions.
 ```
 
-**Notes by language:**
+**Notes by language** — the principle is universal; apply it the way each language is idiomatic:
 - **Go:** prefer table-driven tests when the bug has multiple boundary conditions; one row per condition.
 - **TypeScript / Jest:** if the fix involves async behavior, use `await expect(...).rejects.toThrow(...)` — easy to get wrong.
 - **Python / pytest:** `pytest.raises` with `match=` pins the error message; useful for proving the right code path triggered.

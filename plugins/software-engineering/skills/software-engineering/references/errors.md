@@ -50,7 +50,7 @@ func (h *Handler) GetOrder(w http.ResponseWriter, r *http.Request) {
 }
 ```
 
-**Notes by language:**
+**Notes by language** — the principle is universal; apply it the way each language is idiomatic:
 - **Go:** use `errors.Is` / `errors.As` for discrimination; wrap with `%w` in `fmt.Errorf`.
 - **Python:** raise typed exceptions; use `raise ... from err` to preserve cause chains.
 - **TypeScript:** since JS errors are stringly-typed, define a discriminated union (`type Result<T, E> = ...`) or use a library (e.g., neverthrow, fp-ts) for explicit error channels.

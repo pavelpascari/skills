@@ -60,7 +60,7 @@ def parse_header_with_mode(h: str, mode: str) -> Any: ...  # smell
 
 ## Internal coupling
 
-**Rule:** Default to ports and adapters. Direct call is fine when the dependency is a single, well-scoped implementation with a clear API. Use an interface for multiple implementations or testing seams. **Inner modules must not depend on outer modules.**
+**Rule:** Discover interfaces, don't design them. Start with concrete types. Introduce an interface only when a second implementation or a real testing seam exists, never preemptively. **Inner modules must not depend on outer modules.**
 
 **Why:** Dependency direction controls how code evolves. When inner (domain) code depends on outer (infra) code, changing infra breaks the domain. Reversing the direction — domain defines the port, infra implements it — lets the domain stay stable while the world around it changes.
 
@@ -158,33 +158,50 @@ function processOrder(order: Order): Promise<void>;
 
 ## Code structure
 
-**Rule:** Organize code as vertical slices outside (by domain), hexagonal inside (ports and adapters). Core domain is I/O-less; side effects only at outer layers. Prefer deep modules with minimal but strong APIs over many thin modules spread too thin.
+**Rule:** Organize code around three firewalls — packaging, layering, and domains. Use an explicit four-layer split with each layer owning its own type system:
 
-**Why:** Vertical slices put files that change together next to each other. Hexagonal inside keeps the core testable without infrastructure. Deep modules hide complexity behind a small API; many thin modules force the reader to follow imports across many files to understand one concept.
+- **API layer** — protocol transport (HTTP, gRPC, stdio). Decodes the stream into App models and encodes App models back to the stream. No data models of its own.
+- **App layer** — external user-facing APIs. Data models carry the wire encoding (e.g. JSON tags) and the input constraints. Calls into Business.
+- **Business layer** — the application's schema. Data models have no wire or storage encoding. Declares the storage contracts the domain needs.
+- **Storage layer** — implements the Business storage contracts with persistence-specific encoding. Trusts the Business layer with what it is asked to store.
 
-**How to apply:** Top-level layout reflects business domains (`orders/`, `payments/`, `users/`). Inside each domain, a core layer (pure logic, no I/O) and adapter layers (HTTP, DB, queue). When in doubt about whether to split a module, ask: is its API surface still small and easy to describe?
+Data flows through these layers via transformations. Integrity is maintained because no layer's encoding leaks into another.
+
+**Why:** Complexity is the long-term enemy. Each firewall localizes one kind of change so the rest of the system doesn't pay for it. When JSON changes, only the App layer changes; when the DB changes, only Storage changes; the Business schema stays stable. Packaging localizes individual problems into firewalled units the compiler reasons about. Domains group related layers so each group can be reasoned about and scaled independently.
+
+**How to apply:**
+- Each package has a clear, narrow purpose; it *provides* one thing rather than *containing* many disparate things.
+- Each layer defines its own types for input and output; data is transformed between layers rather than shared.
+- Imports are one-way streets. No cross-imports between packages; no inner-to-outer dependencies between layers.
+- Polymorphism is opt-in: a polymorphic function uses the type system of the package that defined the interface. All other types stay package-local.
+- "Don't make things easy to do, make things easy to understand." Optimize for the reader.
 
 **Red flags:**
-- Top-level `controllers/`, `services/`, `repositories/` with domain concepts scattered across all three.
-- Inner files that import HTTP clients, ORMs, or queues directly.
-- A module whose public API has 12 exported functions, half of which exist only because callers needed implementation details.
-- Hard-to-test code — usually a design signal, not a testing problem.
+- Packages named `utils`, `helpers`, `common`, `shared` — names that describe contents, not purpose.
+- App or API types leaking into Business or Storage (or vice versa).
+- A single shared type definition used in all layers — usually one layer's encoding contaminating another.
+- Cyclic imports — the firewall has cracked.
 
-**Example:**
+**Example (Go-shaped; the principle is language-agnostic):**
 ```
-orders/
-  core/                # I/O-less
-    order.go           # entity, business rules
-    pricing.go         # pure functions
-  ports/
-    order_repo.go      # interface
-    payment_gateway.go # interface
-  adapters/
-    http_handler.go    # outer adapter
-    postgres_repo.go   # outer adapter, implements ports/order_repo.go
+api/
+  http/              # API layer — protocol transport
+    handler.go       # decodes stream → App models; encodes App models → stream
+app/
+  orders/            # App layer — external user-facing API
+    orders.go        # App models with JSON tags + input validation
+business/
+  orders/            # Business layer — the application schema
+    orders.go        # Business models (no encoding leakage)
+    storer.go        # Storage contract this domain needs
+storage/
+  ordersdb/          # Storage layer — implements the Business storage contract
+    ordersdb.go      # Storage models with persistence-specific encoding
 ```
 
-**Notes by language:**
-- **Go:** package boundaries align with module boundaries; the package is the unit of encapsulation.
-- **Java/Kotlin:** use module / package-private visibility to keep adapter classes out of the core's public surface.
-- **TypeScript:** use barrel files (`index.ts`) sparingly — they erode the encapsulation benefits of folder structure.
+**Notes by language** — the principle is universal; apply it the way each language is idiomatic:
+- **Go:** packages ARE the firewall — the compiler enforces them. The package is the unit of encapsulation.
+- **Java/Kotlin:** module + package-private visibility approximates Go's package boundaries. Multi-module Gradle/Maven projects can mirror the four-layer structure.
+- **TypeScript:** without real package-level visibility, lean on directory boundaries + lint rules (e.g. `eslint-plugin-boundaries`) to enforce import direction.
+
+**Credit:** the three-firewalls / four-layer model is articulated by Bill Kennedy in *Domain-Driven, Data-Oriented Design* (ardanlabs/service wiki).
