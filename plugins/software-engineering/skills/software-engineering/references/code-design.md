@@ -40,6 +40,8 @@ func (s *Service) GetProfile(ctx context.Context, id string) (*Profile, error) {
 
 **Why:** Premature abstraction couples things that happen to look alike but evolve independently. The shared helper grows knobs to satisfy diverging callers, ending up worse than the original duplication.
 
+The other side of this is integrity: every line of code is a bug surface. Bjarne Stroustrup frames extra code as **ugly, large, slow** — ugly leaves places for bugs to hide, large ensures incomplete tests, slow encourages shortcuts and dirty tricks. The right amount of duplication serves the same goal as the right amount of abstraction: less code that must be correct, fewer places for bugs to hide.
+
 **How to apply:** Before extracting, ask: do these places represent the same concept? Will they change together? If two snippets read alike but parse different headers for different purposes, leave them inline. If three call sites genuinely encode one operation, extract.
 
 **Red flags:**
@@ -174,6 +176,7 @@ Data flows through these layers via transformations. Integrity is maintained bec
 - Each layer defines its own types for input and output; data is transformed between layers rather than shared.
 - Imports are one-way streets. No cross-imports between packages; no inner-to-outer dependencies between layers.
 - Polymorphism is opt-in: a polymorphic function uses the type system of the package that defined the interface. All other types stay package-local.
+- **Reducing complexity is more powerful than hiding it.** Encapsulation hides complexity from one reader, but the complexity is still there for the next maintainer to face. When you can choose between hiding complexity behind a clean API and removing the complexity entirely, prefer removal. (Chris Hines, via Bill Kennedy.)
 - "Don't make things easy to do, make things easy to understand." Optimize for the reader.
 
 **Red flags:**

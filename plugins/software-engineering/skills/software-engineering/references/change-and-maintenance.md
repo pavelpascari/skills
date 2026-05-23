@@ -26,6 +26,8 @@
 
 **Why:** Squeezing a feature into a tangled module makes the tangle worse and costs more on every subsequent change. Refactoring first costs upfront but compounds positively. Without tests, you can't refactor safely — coverage is what makes the refactor a non-event.
 
+**Refactor signal: mental-model loss.** When you find yourself unable to remember where a piece of logic lives, or unable to predict how a change will ripple, in code you're actively modifying — that's a strong signal to refactor. Not because the code is "bad," but because it has outgrown what fits in a developer's head. Mental-model loss precedes the bugs that come from confidently editing code you no longer understand. ~10k LOC per maintainer is a practical ceiling for what one human can hold; above that, structure and firewalls have to do the remembering.
+
 **How to apply:**
 1. Identify the seams you need (where will the new feature interact with existing code?).
 2. Cover those seams with tests until you're confident a refactor won't break them (~80%).

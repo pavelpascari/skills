@@ -2,7 +2,7 @@
 name: software-engineering
 description: >
   Use during coding work: implementing features, fixing bugs, refactoring, reviewing
-  code, designing APIs, writing tests, building services. Encodes 19 principles
+  code, designing APIs, writing tests, building services. Encodes 23 principles
   covering code design, testing, errors, review process, maintenance, and observability.
 user-invocable: true
 ---
@@ -31,10 +31,10 @@ These apply always. If you find yourself about to violate one, stop and reconsid
 → See `references/code-design.md` for details.
 
 - **Boundary validation** — public APIs validate; internal callers are trusted.
-- **Semantic DRY** — extract only when intent matches, not when shapes look alike.
-- **Internal coupling** — default to ports and adapters; inner modules must not depend on outer modules.
+- **Semantic DRY** — extract only when intent matches, not when shapes look alike; every line is a bug surface.
+- **Internal coupling** — discover interfaces, don't design them; inner modules must not depend on outer modules.
 - **API design** — minimal composable primitives; extension points are demand-driven.
-- **Code structure** — vertical slices outside, hexagonal inside; IO-less core; deep modules with strong APIs.
+- **Code structure** — three firewalls (packaging, layering, domains); four layers (API / App / Business / Storage); each layer owns its types.
 
 ## Naming and language
 
@@ -42,6 +42,7 @@ These apply always. If you find yourself about to violate one, stop and reconsid
 
 - **Ubiquitous language** — domain layer speaks the agreed-upon business language; mapping layer bridges to legacy storage names.
 - **Comments** — docstrings on public APIs; internal code only when WHY is non-obvious.
+- **Code must never lie** — names, comments, tests, logs, and errors must accurately reflect what is actually happening.
 
 ## Testing
 
@@ -65,6 +66,9 @@ These apply always. If you find yourself about to violate one, stop and reconsid
 - **Scope discipline** — opportunistic cleanup OK if PR stays small; otherwise stacked PRs with discrete reviewable commits.
 - **Commits and PRs** — always a PR; ~200-300 LOC target; each PR stands on its own; large changes → stacked PRs.
 - **Decisions** — defer to team conventions first; surface tradeoffs explicitly.
+- **Make it correct → clear → concise → fast** — four priorities, sequenced; do not reorder.
+- **Prototype before production** — for non-trivial new ideas, validate with throwaway code before designing contracts.
+- **Rules have costs** — every rule, convention, or lint check must pull its weight; audit them.
 
 ## Change and maintenance
 

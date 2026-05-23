@@ -4,7 +4,9 @@
 
 **Rule:** Internal layers propagate errors with context describing what they were attempting. The public API layer (HTTP handler, CLI entry, message consumer) decides how the error is presented to the outside world — status code, sanitized message, retry guidance, log severity.
 
-**Why:** The function that hits the database doesn't know whether the caller is a public HTTP endpoint, a background job, or a CLI tool. Each of those wants a different response: HTTP wants a status code and a sanitized body; a job wants a retry decision; a CLI wants a human-readable message. Pushing presentation decisions to the boundary keeps internal code single-purpose and lets one error type satisfy many callers.
+**Why:** **Error handling is a first-class concern, not an exception path.** A USENIX study of catastrophic failures in distributed systems (Cassandra, HBase, HDFS, MapReduce, Redis) found that ~92% came from incorrect, ignored, or incomplete error handling — not from the happy-path logic. Treat error paths with the same rigor as the main path: name them, type them, test them, and decide explicitly what happens at the boundary.
+
+The function that hits the database doesn't know whether the caller is a public HTTP endpoint, a background job, or a CLI tool. Each of those wants a different response: HTTP wants a status code and a sanitized body; a job wants a retry decision; a CLI wants a human-readable message. Pushing presentation decisions to the boundary keeps internal code single-purpose and lets one error type satisfy many callers.
 
 **How to apply:**
 - Internal code returns errors wrapped with context: `fmt.Errorf("loading order %s: %w", id, err)` (Go), `raise OrderLoadError(id) from err` (Python).

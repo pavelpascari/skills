@@ -67,3 +67,45 @@ for chunk in chunked(items, 200):
 - **Go:** exported identifiers should have a doc comment starting with the identifier name (`// Order represents ...`). The toolchain enforces this in some configs.
 - **Python:** docstrings are part of the runtime (`__doc__`), so they double as machine-readable API descriptions.
 - **TypeScript:** JSDoc (`/** ... */`) integrates with editor tooling for hover hints — worth writing on exported types/functions.
+
+---
+
+## Code must never lie
+
+**Rule:** Code, names, comments, tests, log messages, and error strings must accurately reflect what is actually happening. A misleading name, a stale comment, a passing test that doesn't actually verify the behavior — all of these are lies the reader trusts, and the wrong fix follows.
+
+**Why:** Software is read many more times than it is written. The reader's mental model is built from the signals the code provides — function names, type names, comments, test names, log fields, error messages. When any of those signals drifts from reality, the mental model is wrong, and confident edits compound the bug. The most insidious failures are those where the code looks like it's doing one thing but does another.
+
+**How to apply:**
+- **Names:** rename the moment behavior diverges. `validateOrder` that no longer validates is now misleading; it's `normalizeOrder` or it's broken.
+- **Comments:** delete or update on every code change. A drifted comment is worse than no comment.
+- **Tests:** a test named `test_handles_concurrent_writes` must actually exercise concurrency. If the implementation changed, fix the test, don't keep the name.
+- **Errors:** error messages describe what actually went wrong with this run, not the original expectation.
+- **Logs:** log fields match the values being logged. After `user` becomes `account`, the field name updates too.
+
+**Red flags:**
+- Function body has diverged from its name.
+- Comment describing behavior the code no longer has.
+- Test name overstates what the test verifies.
+- Error message reused after the code path that produced it changed.
+- `// TODO` markers from prior years, lying about ongoing work.
+
+**Example:**
+```python
+# Bad — the name lies. The function no longer validates; it only normalizes.
+def validate_email(addr: str) -> str:
+    return addr.strip().lower()
+
+# Good — name matches behavior.
+def normalize_email(addr: str) -> str:
+    return addr.strip().lower()
+
+# Or, if validation is genuinely needed, restore it.
+def validate_email(addr: str) -> str:
+    addr = addr.strip().lower()
+    if "@" not in addr:
+        raise ValueError(f"invalid email: {addr!r}")
+    return addr
+```
+
+**Credit:** "Code must never lie" — Nate Finch, surfaced in Bill Kennedy's *Design Guidelines* wiki.
