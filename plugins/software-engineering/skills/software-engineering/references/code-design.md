@@ -98,13 +98,60 @@ func (r *PostgresOrderRepo) Save(ctx context.Context, o *domain.Order) error { /
 - Hooks / callbacks with no tested call sites.
 - Public method that takes a strategy / handler interface used in exactly one place.
 
-**Example:**
+**Example — options bag bloat:**
 ```typescript
-// Start small:
-function fetchUser(id: string): Promise<User>;
+// Anti-pattern: client constructor accumulates unrelated concerns over time.
+new ApiClient({
+  baseUrl: "...",
+  timeout: 30000,
+  retries: 3,
+  retryBackoff: "exponential",
+  retryJitter: true,
+  cache: true,
+  cacheTtl: 300,
+  cacheStorage: "memory",
+  authToken: "...",
+  authHeader: "Authorization",
+  userAgent: "...",
+  proxy: "...",
+  pool: { max: 100, keepAlive: true },
+  metrics: metricsReporter,
+  tracer,
+  logger,
+  errorHandler: (e) => { /* ... */ },
+  middleware: [/* ... */],
+});
+// Twenty knobs. Most callers use 3-5 of them. The bag mixes unrelated
+// concerns — transport, caching, auth, observability, error handling —
+// and every new concern grows the constructor signature.
 
-// When a real need emerges (cancellation across all callers), extend:
-function fetchUser(id: string, opts?: { signal?: AbortSignal }): Promise<User>;
+// Composable layers — one concern each. Callers wrap only what they need.
+const transport = createTransport({ baseUrl, timeout, pool });
+const cached    = withCache(transport, { ttl: 300 });
+const traced    = withTracing(cached, tracer);
+const client    = new ApiClient(traced, { auth: token });
+```
+
+**Example — lifecycle callbacks no one uses:**
+```typescript
+// Anti-pattern: pre-wired hooks "in case someone needs them later".
+function processOrder(
+  order: Order,
+  hooks?: {
+    beforeValidate?: (o: Order) => void;
+    afterValidate?: (o: Order) => void;
+    beforeSubmit?: (o: Order) => void;
+    afterSubmit?: (o: Order) => void;
+    onError?: (e: Error) => void;
+  },
+): Promise<void>;
+// Six months later: zero call sites use any of these. They are now permanent
+// obligations the maintainer cannot safely remove.
+
+// Start without hooks. When a real caller needs to react to a specific
+// moment, add THAT one callback — named after what it does — informed by
+// the actual use case, not anticipation.
+function processOrder(order: Order): Promise<void>;
 ```
 
 ---
