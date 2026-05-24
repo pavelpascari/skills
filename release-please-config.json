@@ -18,7 +18,7 @@
       "extra-files": [
         {
           "type": "json",
-          "path": "../../.claude-plugin/marketplace.json",
+          "path": "/.claude-plugin/marketplace.json",
           "jsonpath": "$.plugins[?(@.name == 'software-engineering')].version"
         }
       ]
@@ -28,7 +28,7 @@
       "extra-files": [
         {
           "type": "json",
-          "path": "../../.claude-plugin/marketplace.json",
+          "path": "/.claude-plugin/marketplace.json",
           "jsonpath": "$.plugins[?(@.name == 'test-code-review')].version"
         }
       ]
