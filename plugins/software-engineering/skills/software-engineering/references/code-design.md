@@ -13,7 +13,7 @@
 - Validation duplicated in caller and callee, with no clear "this is the boundary".
 - A trivial private helper guards against `nil` even though every caller has already non-nil-checked.
 
-**Example:**
+**Example — boundary validates input, internal trusts:**
 ```go
 // Public boundary: validates.
 func (h *Handler) GetProfile(w http.ResponseWriter, r *http.Request) {
@@ -31,6 +31,55 @@ func (s *Service) GetProfile(ctx context.Context, id string) (*Profile, error) {
     return s.repo.Find(ctx, id)
 }
 ```
+
+**Example — null-object pattern for optional dependencies:**
+
+The constructor is also a boundary. When a dependency is "optional" (metrics, logger, tracer, feature-flag client), the wrong fix is nil-checks at every call site:
+
+```go
+// Anti-pattern: nullable dependency forces defensive checks everywhere.
+type Breaker struct {
+    metrics *Metrics // may be nil in tests or some environments
+}
+
+func (b *Breaker) Allow() bool {
+    if b.metrics != nil { // every call site repeats this
+        b.metrics.DegradedDependencyTotal.WithLabelValues("breaker", "allow").Inc()
+    }
+    // ...
+}
+```
+
+The right fix is to make the dependency unconditionally present via a null-object implementation. The constructor is the boundary that decides which implementation; every call site then trusts the dependency exists.
+
+```go
+type Metrics interface {
+    IncDegraded(reason, outcome string)
+}
+
+type NoOpMetrics struct{}
+func (NoOpMetrics) IncDegraded(_, _ string) {}
+
+type Breaker struct {
+    metrics Metrics // never nil — constructor guarantees it
+}
+
+func NewBreaker(m Metrics) *Breaker {
+    if m == nil {
+        panic("metrics is required; pass NoOpMetrics{} to disable explicitly")
+    }
+    return &Breaker{metrics: m}
+}
+
+func (b *Breaker) Allow() bool {
+    b.metrics.IncDegraded("breaker", "allow") // unconditional; reads clean
+    // ...
+}
+```
+
+The panic at construction is the boundary doing its job: callers must make an explicit choice (real implementation or `NoOpMetrics{}`). There is no path to "I forgot to wire it" silently producing no metrics in production. The null-object has to be passed deliberately — the wiring stays honest, and call sites stay clean.
+
+This pattern dovetails with **Code must never lie** (a nullable type lies about the contract), **Internal coupling — discover interfaces** (real + no-op are two real implementations, justifying the interface), and **Compose, don't inject** (`observability.md`).
 
 ---
 
