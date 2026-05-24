@@ -117,3 +117,9 @@ def update_order(o, quantity):
 - **Go:** prefer table-driven tests when the bug has multiple boundary conditions; one row per condition.
 - **TypeScript / Jest:** if the fix involves async behavior, use `await expect(...).rejects.toThrow(...)` — easy to get wrong.
 - **Python / pytest:** `pytest.raises` with `match=` pins the error message; useful for proving the right code path triggered.
+
+---
+
+## See also: `test-code-review` plugin
+
+For reviewing test diffs specifically — catching weakened assertions, missing coverage, and tests rewritten to match buggy behavior instead of catching it — see the companion `test-code-review` plugin in this marketplace. Where this reference defines the discipline (TDD, reproduce-then-fix, the test pyramid), `test-code-review` is the actionable review pass for the diff in front of you.
