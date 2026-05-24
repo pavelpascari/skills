@@ -14,13 +14,18 @@
       "name": "test-code-review",
       "source": "./plugins/test-code-review",
       "description": "Review test code changes for correctness, catching weakened assertions and tests rewritten to match buggy behavior.",
-      "version": "1.0.0",
+      "version": "1.1.0",
       "author": {
         "name": "Pavel Pascari",
         "email": "pavel@ppascari.com"
       },
       "license": "MIT",
-      "keywords": ["testing", "code-review", "assertions", "quality"],
+      "keywords": [
+        "testing",
+        "code-review",
+        "assertions",
+        "quality"
+      ],
       "category": "quality"
     },
     {
@@ -33,7 +38,14 @@
         "email": "pavel@ppascari.com"
       },
       "license": "MIT",
-      "keywords": ["software-engineering", "principles", "code-quality", "tdd", "architecture", "code-review"],
+      "keywords": [
+        "software-engineering",
+        "principles",
+        "code-quality",
+        "tdd",
+        "architecture",
+        "code-review"
+      ],
       "category": "quality"
     }
   ]
