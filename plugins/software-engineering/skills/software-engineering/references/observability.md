@@ -53,3 +53,5 @@ proc := NewTracedProcessor(NewStripeProcessor(...), tracer)
 - **Go:** OpenTelemetry has middleware for net/http, gRPC, sql — use it for wire-crossing operations.
 - **Java/Spring:** Spring Boot's auto-configuration covers most cross-cutting telemetry; add custom only for business KPIs.
 - **TypeScript/Node:** the OpenTelemetry SDK auto-instruments most HTTP / DB / cache libraries; manual instrumentation belongs in your application logic, not in protocol plumbing.
+
+**See also:** the **null-object pattern** in `code-design.md` (under Boundary validation). When an observability dependency is "optional" (metrics, logger, tracer), the answer is not nil-checks at every call site — it's a no-op implementation that the constructor wires in deliberately. Same compose-don't-inject instinct, applied to absence rather than enrichment.
