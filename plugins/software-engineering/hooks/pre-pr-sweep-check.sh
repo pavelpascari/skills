@@ -6,12 +6,17 @@ set -euo pipefail
 
 input=$(cat)
 
-tool_name=$(jq -r '.tool_name // ""' <<<"$input")
+# Malformed JSON (or no JSON at all, e.g. empty stdin) makes jq exit non-zero.
+# A bare assignment failing there would abort the script under `set -e` with
+# jq's own exit status — exactly the "hooks never block" violation this
+# script guards against everywhere else. `|| exit 0` keeps the failure from
+# ever reaching `set -e`.
+tool_name=$(jq -r '.tool_name // ""' <<<"$input" 2>/dev/null) || exit 0
 if [ "$tool_name" != "Bash" ]; then
   exit 0
 fi
 
-command=$(jq -r '.tool_input.command // ""' <<<"$input")
+command=$(jq -r '.tool_input.command // ""' <<<"$input" 2>/dev/null) || exit 0
 if [ -z "$command" ]; then
   exit 0
 fi
@@ -93,10 +98,15 @@ marker="$git_dir/software-engineering/last-sweep"
 swept=""
 if [ -r "$marker" ]; then
   swept=$(head -1 "$marker" 2>/dev/null || true)
-  # A CRLF-saved marker leaves a trailing \r that head -1 does not strip
-  # (it only stops at \n); trim it so a CRLF marker matching HEAD reads as
-  # a match instead of a permanent, spurious nag.
-  swept="${swept%$'\r'}"
+  # head -1 stops at \n but strips nothing else: a marker saved with a
+  # trailing space/tab, a CRLF (\r), or even \r\r would otherwise never
+  # equal a bare $head_sha and would nag permanently. Trim ALL trailing
+  # whitespace, not just a single \r.
+  while :; do
+    trimmed="${swept%[[:space:]]}"
+    [ "$trimmed" = "$swept" ] && break
+    swept="$trimmed"
+  done
 fi
 if [ "$swept" = "$head_sha" ]; then
   exit 0

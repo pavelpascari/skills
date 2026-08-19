@@ -127,6 +127,24 @@ assert_silent "sweep: CRLF marker matching HEAD is silent" \
   "$REPO" "$SCRIPT" "$(bash_json "gh pr create --fill")"
 rm -rf "$REPO"
 
+# --- regression: general trailing-whitespace trim, not CR-only (review finding 5) ---
+# The finding-4 fix stripped exactly one trailing \r. A marker saved with a
+# trailing space, tab, or \r\r still never equalled a bare $head_sha and
+# nagged permanently. The fix must trim ALL trailing whitespace.
+REPO="$(make_repo)"
+mkdir -p "$REPO/.git/software-engineering"
+printf '%s \n' "$(git -C "$REPO" rev-parse HEAD)" > "$REPO/.git/software-engineering/last-sweep"
+assert_silent "sweep: trailing-space marker matching HEAD is silent" \
+  "$REPO" "$SCRIPT" "$(bash_json "gh pr create --fill")"
+rm -rf "$REPO"
+
+REPO="$(make_repo)"
+mkdir -p "$REPO/.git/software-engineering"
+printf '%s\r\r\n' "$(git -C "$REPO" rev-parse HEAD)" > "$REPO/.git/software-engineering/last-sweep"
+assert_silent "sweep: double-CR marker matching HEAD is silent" \
+  "$REPO" "$SCRIPT" "$(bash_json "gh pr create --fill")"
+rm -rf "$REPO"
+
 # --- ledger states ---
 REPO="$(make_repo)"
 mkdir -p "$REPO/docs"
@@ -199,3 +217,15 @@ NOTREPO="$(mktemp -d)"
 assert_silent "sweep: outside a git repo, exit silently" \
   "$NOTREPO" "$SCRIPT" "$(bash_json "gh pr create --fill")"
 rm -rf "$NOTREPO"
+
+# --- regression: malformed/absent JSON must not exit non-zero (review finding 6) ---
+# jq exits non-zero on a parse error; a bare `var=$(jq ...)` assignment left
+# that failure to `set -e`, which aborted the script with jq's own exit
+# status (5) instead of the 0 every other path in this hook guarantees.
+REPO="$(make_repo)"
+assert_silent "sweep: malformed JSON on stdin exits silently" \
+  "$REPO" "$SCRIPT" 'not json{{{'
+
+assert_silent "sweep: empty stdin exits silently" \
+  "$REPO" "$SCRIPT" ''
+rm -rf "$REPO"
