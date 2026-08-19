@@ -21,7 +21,17 @@ command=$(jq -r '.tool_input.command // ""' <<<"$input" 2>/dev/null) || exit 0
 
 # Only interested in `git commit ...`. Match `git commit` as a word boundary so
 # `git commit-tree` and other subcommands are excluded.
-if ! echo "$command" | grep -Eq '(^|[[:space:];&|])git[[:space:]]+commit($|[[:space:]])'; then
+#
+# Boundary class: kept identical, character for character, to the
+# `gh_boundary` class in hooks/pre-pr-sweep-check.sh (see that file's comment
+# for the full rationale — quoted wrappers like `eval "..."`/`bash -c
+# "..."`/`` `...` `` need to match, and a subshell-wrapped commit like
+# `(git commit -m "fix: ...")` needs its `(` in the class too). The two
+# scripts had already drifted once (this one was missing `(` entirely) — see
+# hooks/tests/test-boundary-drift.sh, which fails the suite if they drift
+# apart again.
+git_boundary=$(printf '%b' '[[:space:];&|(\042\047\0140]')
+if ! echo "$command" | grep -Eq "(^|${git_boundary})git[[:space:]]+commit(\$|[[:space:]])"; then
   exit 0
 fi
 

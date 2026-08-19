@@ -97,3 +97,18 @@ git -C "$REPO" add handler.go
 assert_silent "bug-fix: 'git commit -a' with no -m does not abort" \
   "$REPO" "$SCRIPT" "$(bash_json "git commit -a")"
 rm -rf "$REPO"
+
+# --- regression: a subshell-wrapped commit must still arm the tripwire
+# (blocking finding 3) ---
+# The boundary class here was `[[:space:];&|]` — missing `(` entirely, unlike
+# pre-pr-sweep-check.sh's `gh` class which already had it. A commit wrapped
+# in a subshell, `(git commit -m "fix: ...")`, is exactly the shape that `(`
+# exists to catch, and it silently fell through: no staged-test check ever
+# ran on the one commit this hook exists to catch.
+REPO="$(make_repo)"
+printf 'x\n' > "$REPO/handler.go"
+git -C "$REPO" add handler.go
+assert_contains "bug-fix: subshell-wrapped fix commit without tests still warns" \
+  "$REPO" "$SCRIPT" "$(bash_json '(git commit -m "fix: parser crash")')" \
+  "no test changes"
+rm -rf "$REPO"

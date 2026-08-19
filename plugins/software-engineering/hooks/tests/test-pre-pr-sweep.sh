@@ -249,3 +249,59 @@ assert_silent "sweep: malformed JSON on stdin exits silently" \
 assert_silent "sweep: empty stdin exits silently" \
   "$REPO" "$SCRIPT" ''
 rm -rf "$REPO"
+
+# --- regression: an invalid UTF-8 byte in an open ledger entry must not
+# abort the script (blocking finding 1) ---
+# `cut -c1-90` is codepoint-aware under a UTF-8 locale; on BSD/macOS cut, a
+# line containing an invalid UTF-8 byte (e.g. a path pasted with bad
+# encoding) makes it exit 1 with "Illegal byte sequence". Under
+# `set -euo pipefail` an unguarded pipeline here previously aborted the whole
+# script — no JSON on stdout, non-zero exit — precisely when the ledger has
+# an entry worth reporting. The fix must not just avoid crashing: it must
+# still exit 0, still emit the sweep warning, and still name the offending
+# entry (a `|| true` that silently produced an empty entry list would be a
+# quieter version of the same bug), so this asserts all three explicitly
+# rather than only checking exit status.
+REPO="$(make_repo)"
+mkdir -p "$REPO/docs"
+printf -- '- [ ] 2026-08-19 `Bad\xffPath.kt:12` invalid UTF-8 byte in entry text\n' \
+  > "$REPO/docs/deferred-review-flags.md"
+
+out="$(run_hook_in "$REPO" "$SCRIPT" "$(bash_json "gh pr create --fill")")"
+status="$(cat "$_HOOK_STATUS_FILE")"
+if [ "$status" = "0" ]; then
+  pass "sweep: invalid-UTF-8 ledger entry still exits 0"
+else
+  fail "sweep: invalid-UTF-8 ledger entry still exits 0" \
+    "exited $status; stdout: $out; stderr: $(cat "$_HOOK_STDERR_FILE")"
+fi
+case "$out" in
+  *"pre-pr-sweep has not run"*) pass "sweep: invalid-UTF-8 ledger entry still emits the sweep warning" ;;
+  *) fail "sweep: invalid-UTF-8 ledger entry still emits the sweep warning" "got: $out" ;;
+esac
+case "$out" in
+  *"invalid UTF-8 byte in entry text"*) pass "sweep: invalid-UTF-8 ledger entry is still named" ;;
+  *) fail "sweep: invalid-UTF-8 ledger entry is still named" "got: $out" ;;
+esac
+rm -rf "$REPO"
+
+# --- regression: quoted/wrapped gh invocations must arm the tripwire
+# (blocking finding 2) ---
+# The boundary class `[[:space:];&|(]` excludes `"`, `'`, and a backtick, so
+# a `gh pr create` wrapped in any quoting form never matched even though it
+# unambiguously runs the command.
+REPO="$(make_repo)"
+assert_contains "sweep: eval-wrapped gh pr create warns" \
+  "$REPO" "$SCRIPT" "$(bash_json 'eval "gh pr create --fill"')" \
+  "pre-pr-sweep has not run"
+rm -rf "$REPO"
+
+REPO="$(make_repo)"
+assert_contains "sweep: bash -c wrapped gh pr create warns" \
+  "$REPO" "$SCRIPT" "$(bash_json 'bash -c "gh pr create --fill"')" \
+  "pre-pr-sweep has not run"
+
+assert_contains "sweep: ssh host wrapped gh pr create warns" \
+  "$REPO" "$SCRIPT" "$(bash_json 'ssh host "gh pr create --fill"')" \
+  "pre-pr-sweep has not run"
+rm -rf "$REPO"

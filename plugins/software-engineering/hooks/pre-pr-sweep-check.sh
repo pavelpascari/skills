@@ -97,9 +97,30 @@ joined=$(printf '%s\n' "$stripped" | awk '
 # `gh pr list`, `gh pr view`, and `gh pr edit --title` must not match.
 # Here-strings (`<<<`), not pipes, so a match on line one can never SIGPIPE
 # a still-writing producer regardless of how large $joined is.
-if grep -Eq '(^|[[:space:];&|(])gh[[:space:]]+pr[[:space:]]+(create|ready)($|[[:space:]])' <<<"$joined"; then
+#
+# Boundary class: characters that can immediately precede `gh` and still mark
+# a genuine command position, not just a substring inside a longer word.
+# Originally just shell metacharacters (whitespace, `;`, `&`, `|`, `(` for
+# `$(...)`/subshells) — which missed every quoted-wrapper form: `eval "gh pr
+# create --fill"`, `bash -c "gh pr create --fill"`, `ssh host "gh pr create
+# --fill"` all put a `"` immediately before `gh`, and none of `"`, `'`, or a
+# backtick (legacy `` `cmd` `` command substitution) were in the class, so
+# the tripwire silently never armed on any of them. `$(...)` needs no
+# addition: its `(` is already covered. `{` is deliberately left out — bash
+# requires whitespace right after `{` for it to open a command group
+# (`{ gh ...; }`), so that case is already covered by [[:space:]], and a bare
+# `{gh` has no shell meaning to catch.
+#
+# Built via `printf '%b'` with `\0NNN` octal escapes so the class itself
+# never contains a literal quote/backtick that would fight with this file's
+# own shell quoting. Kept identical, character for character, to the
+# `git_boundary` class in scripts/bug-fix-test-check.sh — see
+# hooks/tests/test-boundary-drift.sh, which fails the suite if the two drift
+# apart again.
+gh_boundary=$(printf '%b' '[[:space:];&|(\042\047\0140]')
+if grep -Eq "(^|${gh_boundary})gh[[:space:]]+pr[[:space:]]+(create|ready)(\$|[[:space:]])" <<<"$joined"; then
   :
-elif grep -Eq '(^|[[:space:];&|(])gh[[:space:]]+pr[[:space:]]+edit([[:space:]].*)?--add-reviewer' <<<"$joined"; then
+elif grep -Eq "(^|${gh_boundary})gh[[:space:]]+pr[[:space:]]+edit([[:space:]].*)?--add-reviewer" <<<"$joined"; then
   :
 else
   exit 0
@@ -162,11 +183,27 @@ if [ -n "$open_entries" ]; then
   # lines, and on a large ledger that early exit SIGPIPEs the still-writing
   # printf upstream (fatal under `set -o pipefail`). sed reads to EOF
   # regardless of how much it prints, so no stage here can be SIGPIPEd.
+  #
+  # `cut -c` is codepoint-aware under a UTF-8 locale, and a ledger line
+  # containing an invalid UTF-8 byte (e.g. a path pasted with bad encoding)
+  # makes BSD/macOS cut exit 1 with "Illegal byte sequence". Under
+  # `set -euo pipefail` that would abort the whole script with no JSON on
+  # stdout at all — the "Advisory: never blocks" hook violating its own
+  # contract, and doing so exactly when the ledger has entries worth
+  # reporting. `LC_ALL=C` makes `cut` treat every byte as one character (the
+  # single-byte C locale), so it can never reject a byte as "invalid" and the
+  # entry text survives untouched; it only scopes to this one command, not
+  # `sed` (a separate process) or anything else in the pipeline. `|| true` on
+  # the assignment is a second, independent guard: if some future change
+  # reintroduces a locale-sensitive failure here, the hook must still print
+  # its warning (sans truncation) rather than abort silently — a guard that
+  # instead produced an empty entry list would drop the deferral names,
+  # which is a quieter version of the same bug.
   entry_lines=$(printf '%s\n' "$open_entries" \
     | sed -n '1,5p' \
     | sed -E 's/^[[:space:]]*-[[:space:]]*\[[[:space:]]\][[:space:]]*//' \
-    | cut -c1-90 \
-    | sed 's/^/    · /')
+    | LC_ALL=C cut -c1-90 \
+    | sed 's/^/    · /') || true
   if [ "$count" -gt 5 ]; then
     entry_lines=$(printf '%s\n    · … and %s more' "$entry_lines" "$((count - 5))")
   fi
