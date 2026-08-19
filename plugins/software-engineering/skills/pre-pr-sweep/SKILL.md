@@ -3,7 +3,7 @@ name: pre-pr-sweep
 description: >
   Use before asking anyone to review a branch — before `gh pr create`, `gh pr ready`,
   or adding a reviewer. Sweeps the whole-branch diff for uncontained failure paths,
-  unguarded config, untested error branches, and undrained deferrals, then assembles
+  unguarded config, untested error branches, drifted comments, and undrained deferrals, then assembles
   the PR description. Runs its analytical passes as context-blind sub-agents.
 user-invocable: true
 ---
@@ -26,14 +26,14 @@ The deferral ledger is a convenience, not the input. An empty ledger means "noth
 forward" — never "nothing to check". A sweep that only checks what an earlier stage chose to hand
 it has rebuilt the exact gap it exists to close.
 
-**Re-derivation's coverage is real but partial — say so plainly.** Passes 2, 3, and 5 re-derive
-three specific classes straight from the diff: failure modes, new config guards, and in-diff
-duplication. That is genuine independence from the ledger for those three classes, and an empty
-ledger does not weaken it. But a deferred finding outside those three classes — a misleading name,
-a leaky abstraction, an unvalidated string field, a perf concern — has no re-deriving pass behind
-it. The ledger is its only carrier, and the ledger is a convenience, not a guarantee: if nothing
+**Re-derivation's coverage is real but partial — say so plainly.** Passes 2, 3, 5 and 5b re-derive
+four specific classes straight from the diff: failure modes, new config guards, in-diff duplication,
+and comments that no longer match the code. That is genuine independence from the ledger for those
+four classes, and an empty ledger does not weaken it. But a deferred finding outside them — a
+misleading name, a leaky abstraction, an unvalidated string field, a perf concern —
+has no re-deriving pass behind it. The ledger is its only carrier, and the ledger is a convenience, not a guarantee: if nothing
 wrote it down, it is gone. Do not let the re-derivation rule above be read as "the sweep catches
-everything regardless of the ledger" — it catches those three classes regardless of the ledger,
+everything regardless of the ledger" — it catches those four classes regardless of the ledger,
 and nothing else.
 
 **2. This runs identically on a 5-line PR and a 500-line PR.** Rigor that scales with how
@@ -41,9 +41,12 @@ important a change feels is why the small ones leak. There is no "this is too sm
 
 ## Passes
 
-Passes 0, 1, 6, and 7 run here, in the main context. Passes 2–5 run as **context-blind sub-agents**
-(see below). Passes 2, 3, and 5 fan out in parallel; pass 4 runs after pass 2; pass 7 runs last,
-because its risk list is derived from what 2–5 found.
+Passes 0, 1, 6, and 7 run here, in the main context. Passes 2–5b run as **context-blind sub-agents**
+(see below). Passes 2, 3, 5 and 5b fan out in parallel; pass 4 runs after pass 2; pass 7 runs last,
+because its risk list is derived from what 2–5b found.
+
+(Pass 5b is numbered rather than appended as "pass 8" so that pass 7 stays last, where it belongs —
+it consumes the analytical passes' output and cannot precede them.)
 
 ### Pass 0 — Pin the diff
 
@@ -136,6 +139,27 @@ Helper logic — hashing, key encoding, parsing — appearing in two or more fil
 extract it, or record an explicit drift guard. Scoped to the diff, so this cannot escalate into a
 codebase-wide refactor.
 
+### Pass 5b — Comment value (sub-agent)
+
+Every comment in a changed hunk **and its enclosing function or block** gets one of three verdicts:
+
+- **keep** — deleting it would lose information not recoverable from the code
+- **noise** — recoverable from the code; delete it, or rename so it is
+- **it lies** — the code moved and the comment did not
+
+**Read comments the diff did not touch.** A comment goes stale precisely because the code changed
+and the comment did not, so the drifted comment is usually *not* a changed line — it sits unchanged
+beside changed code. A pass scoped to changed comment lines catches rewrites and misses every real
+drift, which is the failure mode this pass exists for.
+
+For a docstring on a public API, ask the stricter question: does it state the **contract** — inputs,
+failure modes, invariants, units — or restate the signature?
+
+**A drifted comment is a blocking finding. Noise is not.** Noise costs a reader seconds; a comment
+that has drifted actively sends them where the code does not go, and is worse than no comment,
+because a reader with no comment would have read the code. Report noise as a suggestion, so this
+pass does not become a style-nit generator that reviewers learn to skip.
+
 ### Pass 6 — Hygiene
 
 Mechanical, run here:
@@ -152,7 +176,7 @@ Mechanical, run here:
 ### Pass 7 — PR narrative and reviewer hints
 
 The only pass that **produces content** rather than reporting findings: it assembles the PR body.
-It runs **after** passes 2–5, because its risk list is derived from their findings.
+It runs **after** passes 2–5b, because its risk list is derived from their findings.
 
 **Every PR answers three questions**, stacked or standalone:
 
@@ -201,7 +225,7 @@ forbidden, whatever words it uses. Three constraints:
   worded; satisfying the three quoted phrases proves nothing on its own.
 - The risk list **may not be empty**. If no hunk in the change can be named as the risky one, that
   is a finding — not a clean bill of health.
-- The risk list is **not authored freehand**. Derive it from passes 2–5's findings, *including the
+- The risk list is **not authored freehand**. Derive it from passes 2–5b's findings, *including the
   ones dispositioned `ACCEPTED`*. An accepted deferral becomes an explicit review target instead of
   a quietly buried one.
 
@@ -239,18 +263,18 @@ The default shape when the repo has **no** template. With a template present, th
 | Section | Fed by |
 |---|---|
 | `## Why` / `## Stack` / `## What's next` | this pass |
-| `## How to review` | this pass; risk list derived from passes 2–5 |
+| `## How to review` | this pass; risk list derived from passes 2–5b |
 | `## Deferred` | pass 1 dispositions |
 | `## Verification caveats` | pass 6 |
 
-**Why this pass keeps its context**, when 2–5 are blinded: articulating intent *is* the task here,
+**Why this pass keeps its context**, when 2–5b are blinded: articulating intent *is* the task here,
 so it needs the brief, the ticket, and the stack plan. The blind passes judge the code; this one
 explains it. Neither gets to do the other's job — if that boundary blurs, the blinding stops being
 worth anything.
 
 ## Context-blind sub-agents
 
-Passes 2–5 each spawn a `general-purpose` sub-agent. A fresh context — not a fork.
+Passes 2–5b each spawn a `general-purpose` sub-agent. A fresh context — not a fork.
 
 The bias this avoids is specific: an agent that knows *why* the code was written this way will
 accept the rationale. That is exactly how a real edge case gets cleared as "inherited from the
@@ -273,7 +297,7 @@ blinding exists to prevent is the *author's* rationale, which lets a reviewer ac
 justification instead of judging the code in front of it; a sibling pass's enumerated findings are
 not rationale, so this flow does not reintroduce that bias. No other **sub-agent** pass receives
 another pass's output — this is the only permitted cross-pass flow among the blind passes. Pass 7
-later reads all of 2–5's findings by design, but it runs in the main context and was never blind
+later reads all of 2–5b's findings by design, but it runs in the main context and was never blind
 to begin with, so it sits outside this rule rather than violating it.
 
 **Prompt template:**
@@ -282,15 +306,25 @@ to begin with, so it sits outside this rule rather than violating it.
 >
 > <the pass brief, verbatim from above>
 >
-> Assume this code has an unhandled failure and find it. If you are uncertain whether something is
-> a finding, report it.
+> <the adversarial framing for this pass — see below>
 >
-> Every finding MUST carry: `file:line`, and a concrete failure scenario — specific inputs or state
-> leading to a specific wrong outcome. A finding you cannot write a scenario for will be discarded,
-> so do not pad. Do not ask about intent; judge the code in front of you.
+> If you are uncertain whether something is a finding, report it.
+>
+> <the evidence requirement for this pass — see below>
+> A finding you cannot state that way will be discarded, so do not pad. Do not ask about intent;
+> judge what is in front of you.
 
-**Noise control.** Discard findings without a concrete failure scenario, and report how many were
-discarded. A pass that systematically over-flags should be visible, not invisible.
+**The framing and the evidence requirement are per-pass**, because the passes do not all hunt the
+same thing. Substituting the wrong pair produces an agent looking for failure scenarios in a
+comment, or accepting a bug report with no repro:
+
+| pass | adversarial framing | evidence requirement |
+|---|---|---|
+| 2, 3, 4, 5 | "Assume this code has an unhandled failure and find it." | `file:line`, plus a concrete failure scenario — specific inputs or state leading to a specific wrong outcome. |
+| 5b | "Assume a comment here is lying about the code beside it, and find it." | `file:line`, plus a quote of what the comment claims and a statement of what the code actually does instead. |
+
+**Noise control.** Discard findings that do not meet the pass's evidence requirement, and report how
+many were discarded. A pass that systematically over-flags should be visible, not invisible.
 
 **A pass that returns nothing** is reported as "pass N did not complete" — never silently treated
 as "no findings". A silent empty pass is the failure mode this skill exists to eliminate.

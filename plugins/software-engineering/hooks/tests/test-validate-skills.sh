@@ -34,7 +34,7 @@ else
     "the forbidden-inputs list no longer says 'MUST NOT read the ledger'"
 fi
 
-for pass_name in "Pass 0" "Pass 1" "Pass 2" "Pass 3" "Pass 4" "Pass 5" "Pass 6" "Pass 7"; do
+for pass_name in "Pass 0" "Pass 1" "Pass 2" "Pass 3" "Pass 4" "Pass 5" "Pass 5b" "Pass 6" "Pass 7"; do
   if grep -q "### $pass_name" "$SWEEP"; then
     pass "sweep skill: $pass_name is documented"
   else
@@ -236,4 +236,24 @@ if grep -q 'ledger is best-effort' "$SE_SKILL"; then
     "'ledger is best-effort' is still present in $SE_SKILL"
 else
   pass "ledger term: rule 5 no longer calls the ledger 'best-effort'"
+fi
+
+# Pass 5b's whole reason for existing is that a drifted comment is usually NOT a
+# changed line — it sits unchanged beside changed code. A well-meaning edit that
+# scopes the pass to "comments in the diff" would leave the heading in place and
+# silently remove the only thing that makes the pass work.
+if grep -q 'Read comments the diff did not touch' "$SWEEP"; then
+  pass "sweep skill: pass 5b reads comments outside the diff"
+else
+  fail "sweep skill: pass 5b reads comments outside the diff" \
+    "the adjacent-comment scoping rule is missing"
+fi
+
+# The severity asymmetry is what keeps this pass from becoming a style-nit
+# generator that reviewers learn to skip.
+if grep -q 'A drifted comment is a blocking finding. Noise is not' "$SWEEP"; then
+  pass "sweep skill: drifted comments block, noise does not"
+else
+  fail "sweep skill: drifted comments block, noise does not" \
+    "the drift-vs-noise severity split is missing"
 fi
