@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.4.0](https://github.com/pavelpascari/skills/compare/software-engineering-v1.3.1...software-engineering-v1.4.0) (2026-08-19)
+
+
+### Features
+
+* review comments for value, not just write them well ([#20](https://github.com/pavelpascari/skills/issues/20)) ([d611dbb](https://github.com/pavelpascari/skills/commit/d611dbb9c96e786d8ea8307038103a973f0bf535))
+
+
+### Documentation
+
+* replace improvised break-the-code with a mutation catalogue ([#19](https://github.com/pavelpascari/skills/issues/19)) ([4966e1d](https://github.com/pavelpascari/skills/commit/4966e1dd11ad25e7e39979892eb4725fb7411c7f))
+
 ## [1.3.1](https://github.com/pavelpascari/skills/compare/software-engineering-v1.3.0...software-engineering-v1.3.1) (2026-08-19)
 
 

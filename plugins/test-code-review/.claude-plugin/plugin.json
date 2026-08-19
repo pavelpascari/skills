@@ -1,7 +1,7 @@
 {
   "name": "test-code-review",
   "description": "Review test code changes for correctness, catching weakened assertions and tests rewritten to match buggy behavior.",
-  "version": "1.2.1",
+  "version": "1.2.2",
   "author": {
     "name": "Pavel Pascari",
     "email": "pavel@ppascari.com"

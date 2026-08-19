@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.2.2](https://github.com/pavelpascari/skills/compare/test-code-review-v1.2.1...test-code-review-v1.2.2) (2026-08-19)
+
+
+### Documentation
+
+* replace improvised break-the-code with a mutation catalogue ([#19](https://github.com/pavelpascari/skills/issues/19)) ([4966e1d](https://github.com/pavelpascari/skills/commit/4966e1dd11ad25e7e39979892eb4725fb7411c7f))
+
 ## [1.2.1](https://github.com/pavelpascari/skills/compare/test-code-review-v1.2.0...test-code-review-v1.2.1) (2026-08-19)
 
 
