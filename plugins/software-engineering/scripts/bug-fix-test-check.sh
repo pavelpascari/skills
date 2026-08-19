@@ -5,13 +5,19 @@
 set -euo pipefail
 
 input=$(cat)
-tool_name=$(echo "$input" | jq -r '.tool_name // ""')
+
+# Malformed JSON (or no JSON at all, e.g. empty stdin) makes jq exit non-zero.
+# A bare assignment failing there would abort the script under `set -e` with
+# jq's own exit status — exactly the "hooks never block" violation this
+# script guards against everywhere else. `|| exit 0` keeps the failure from
+# ever reaching `set -e`.
+tool_name=$(jq -r '.tool_name // ""' <<<"$input" 2>/dev/null) || exit 0
 
 if [ "$tool_name" != "Bash" ]; then
   exit 0
 fi
 
-command=$(echo "$input" | jq -r '.tool_input.command // ""')
+command=$(jq -r '.tool_input.command // ""' <<<"$input" 2>/dev/null) || exit 0
 
 # Only interested in `git commit ...`. Match `git commit` as a word boundary so
 # `git commit-tree` and other subcommands are excluded.

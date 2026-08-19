@@ -31,7 +31,7 @@
     {
       "name": "software-engineering",
       "source": "./plugins/software-engineering",
-      "description": "Encodes a coherent set of software engineering principles to apply during coding tasks.",
+      "description": "Encodes a coherent set of software engineering principles to apply during coding tasks, plus a pre-PR sweep that forces deferred findings to a decision and enumerates failure modes before review is requested.",
       "version": "1.2.0",
       "author": {
         "name": "Pavel Pascari",
@@ -44,7 +44,8 @@
         "code-quality",
         "tdd",
         "architecture",
-        "code-review"
+        "code-review",
+        "pre-pr-review"
       ],
       "category": "quality"
     }
