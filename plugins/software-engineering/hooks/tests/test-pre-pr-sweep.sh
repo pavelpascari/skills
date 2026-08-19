@@ -16,10 +16,18 @@ assert_silent "sweep: gh pr view is not a review request" \
 assert_silent "sweep: gh pr edit --title is not a review request" \
   "$REPO" "$SCRIPT" "$(bash_json "gh pr edit 5 --title 'fix(ATF-1): x'")"
 
-assert_silent "sweep: gh pr create inside a heredoc body is data, not a command" \
+# --- deliberate design change (blocking finding 1): the heredoc-body stripper
+# was removed. A `cat <<EOF` body that merely mentions `gh pr create` now DOES
+# arm the tripwire — the opposite of the old behavior this test name used to
+# assert. This is accepted: for an advisory hook, one ignorable false-positive
+# reminder is a far smaller cost than the stripper's failure mode (see the
+# "gh pr create via a phantom heredoc delimiter" case below, and the comment
+# in pre-pr-sweep-check.sh above the CONTINUATION-JOIN block).
+assert_contains "sweep: gh pr create mentioned inside a heredoc body now arms the tripwire (deliberate, finding 1)" \
   "$REPO" "$SCRIPT" "$(bash_json "cat <<'EOF' > notes.md
 run gh pr create when ready
-EOF")"
+EOF")" \
+  "pre-pr-sweep has not run"
 
 # --- commands that MUST arm it ---
 assert_contains "sweep: gh pr create warns" \
@@ -54,28 +62,28 @@ some body
 EOF")" \
   "pre-pr-sweep has not run"
 
-# --- regression: awk heredoc-stripper edge cases (review finding 2) ---
-# A `<<-EOF` closed by a tab-indented terminator (the entire point of `<<-`)
-# must still terminate the heredoc, not swallow the real command that follows.
-TAB_HEREDOC_CMD=$'cat <<-EOF\nmentions gh pr create in the body only\n\tEOF\ngh pr create --fill'
-assert_contains "sweep: dash-heredoc with tab-indented terminator still warns" \
-  "$REPO" "$SCRIPT" "$(bash_json "$TAB_HEREDOC_CMD")" \
-  "pre-pr-sweep has not run"
-
-# A closing delimiter with trailing whitespace must still terminate the
-# heredoc rather than swallowing every line after it forever.
-TRAILING_WS_HEREDOC_CMD=$'cat <<EOF\nmentions gh pr create in the body only\nEOF \ngh pr create --fill'
-assert_contains "sweep: heredoc terminator with trailing whitespace still warns" \
-  "$REPO" "$SCRIPT" "$(bash_json "$TRAILING_WS_HEREDOC_CMD")" \
-  "pre-pr-sweep has not run"
-
-# A `<<` used as a shift/append/comparison inside quoted text is not a real
-# heredoc opener; it never finds a closing line matching its phantom
-# delimiter, so parsing runs to EOF still "skipping". The safety-net must
-# fall back to the ORIGINAL command rather than silently dropping the rest.
+# --- regression (blocking finding 1): the heredoc-stripper is gone, so a `<<`
+# that appears inside ordinary quoted text — never a real heredoc opener — can
+# no longer be misparsed as one. These two cases used to depend on the
+# stripper's own "unterminated heredoc" safety net to fall back to the
+# original command; now they trivially match the raw text like anything else,
+# which is the whole point of the removal.
 PHANTOM_HEREDOC_CMD=$'echo "a << b"\ngh pr create --fill'
 assert_contains "sweep: text containing << does not swallow the real command" \
   "$REPO" "$SCRIPT" "$(bash_json "$PHANTOM_HEREDOC_CMD")" \
+  "pre-pr-sweep has not run"
+
+# The exact silent-bypass repro from blocking finding 1: `<<` inside a quoted
+# string is read by a naive heredoc parser as an opener with delimiter STOP,
+# and a later, unrelated bare `STOP` line is misread as the closing
+# terminator — so the parse terminates "cleanly" (no "unterminated" signal)
+# after swallowing every line in between, including the real
+# `gh pr create --fill`. Reproduced against the pre-fix script: exit 0, zero
+# output, total silence. Now that matching runs against the raw command text
+# with no heredoc parsing at all, this can no longer happen.
+PHANTOM_DELIM_CMD=$'echo "look: << STOP"\ngh pr create --fill\nSTOP'
+assert_contains "sweep: gh pr create after a phantom heredoc delimiter still warns" \
+  "$REPO" "$SCRIPT" "$(bash_json "$PHANTOM_DELIM_CMD")" \
   "pre-pr-sweep has not run"
 
 # --- regression: SIGPIPE under set -o pipefail on large input (review finding 1) ---

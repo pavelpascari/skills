@@ -19,6 +19,36 @@ fi
 
 command=$(jq -r '.tool_input.command // ""' <<<"$input" 2>/dev/null) || exit 0
 
+# grep is line-based and `.` cannot span newlines, so a shell line-continuation —
+# `git \` followed by `  commit -m "fix: x"` on the next line — would otherwise never
+# match the pattern below even though it is one logical command. Join backslash-continued
+# lines into a single line first (dropping the trailing `\`, keeping a space so tokens
+# don't fuse) before matching. This reads all of $command via a single awk pass with no
+# early exit, so it is safe against SIGPIPE regardless of input size.
+#
+# Kept identical, character for character, to the continuation-join block in
+# hooks/pre-pr-sweep-check.sh — see hooks/tests/test-boundary-drift.sh, which fails the
+# suite if the two preprocessing idioms drift apart. The two scripts had already drifted
+# once on the boundary class below (this one was missing `(` entirely); this same class of
+# bug (one script preprocesses differently than the other) is exactly what let a
+# continued `git \` + `  commit -m "fix: x"` slip past this hook silently (blocking
+# finding 2) — pre-pr-sweep-check.sh already joined continuations, this script did not.
+# CONTINUATION-JOIN-BEGIN
+joined=$(printf '%s\n' "$command" | awk '
+  {
+    line = (buf != "") ? buf $0 : $0
+    if (line ~ /\\$/) {
+      sub(/\\$/, " ", line)
+      buf = line
+    } else {
+      print line
+      buf = ""
+    }
+  }
+  END { if (buf != "") print buf }
+')
+# CONTINUATION-JOIN-END
+
 # Only interested in `git commit ...`. Match `git commit` as a word boundary so
 # `git commit-tree` and other subcommands are excluded.
 #
@@ -31,7 +61,7 @@ command=$(jq -r '.tool_input.command // ""' <<<"$input" 2>/dev/null) || exit 0
 # hooks/tests/test-boundary-drift.sh, which fails the suite if they drift
 # apart again.
 git_boundary=$(printf '%b' '[[:space:];&|(\042\047\0140]')
-if ! echo "$command" | grep -Eq "(^|${git_boundary})git[[:space:]]+commit(\$|[[:space:]])"; then
+if ! echo "$joined" | grep -Eq "(^|${git_boundary})git[[:space:]]+commit(\$|[[:space:]])"; then
   exit 0
 fi
 
@@ -46,7 +76,7 @@ fi
 # on the pipeline lets a "no match" resolve to an empty $message instead,
 # matching the `staged=$(git diff --cached ... || true)` guard later in this
 # script.
-message=$(echo "$command" | grep -oE -- '-m[[:space:]]+("[^"]*"|'"'"'[^'"'"']*'"'"'|[^[:space:]]+)' | sed -E 's/^-m[[:space:]]+//; s/^["'"'"']//; s/["'"'"']$//' | head -1 || true)
+message=$(echo "$joined" | grep -oE -- '-m[[:space:]]+("[^"]*"|'"'"'[^'"'"']*'"'"'|[^[:space:]]+)' | sed -E 's/^-m[[:space:]]+//; s/^["'"'"']//; s/["'"'"']$//' | head -1 || true)
 if [ -z "$message" ] && [ -r .git/COMMIT_EDITMSG ]; then
   # Guarded for the same reason, even though a file already passed `-r` is
   # very unlikely to fail to read: keep every command that reads external

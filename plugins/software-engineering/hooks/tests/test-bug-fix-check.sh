@@ -112,3 +112,20 @@ assert_contains "bug-fix: subshell-wrapped fix commit without tests still warns"
   "$REPO" "$SCRIPT" "$(bash_json '(git commit -m "fix: parser crash")')" \
   "no test changes"
 rm -rf "$REPO"
+
+# --- regression: a backslash-continued `git commit` must still arm the
+# tripwire (blocking finding 2) ---
+# grep is line-based and `.` cannot span newlines, so `git \` followed by
+# `  commit -m "fix: x"` on the next line (an ordinary shell line-continuation)
+# previously fell through the `git commit` pattern silently: pre-pr-sweep-check.sh
+# already joined backslash-continued lines before matching, but this script
+# matched raw $command with no such join — the same bug class already fixed
+# for --add-reviewer in the sibling script, just recurring here for `git commit`.
+REPO="$(make_repo)"
+printf 'x\n' > "$REPO/handler.go"
+git -C "$REPO" add handler.go
+CONTINUED_COMMIT_CMD=$'git \\\n  commit -m "fix: x"'
+assert_contains "bug-fix: line-continued 'git commit' still warns" \
+  "$REPO" "$SCRIPT" "$(bash_json "$CONTINUED_COMMIT_CMD")" \
+  "no test changes"
+rm -rf "$REPO"

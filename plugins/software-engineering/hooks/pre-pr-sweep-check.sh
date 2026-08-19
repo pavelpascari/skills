@@ -21,65 +21,41 @@ if [ -z "$command" ]; then
   exit 0
 fi
 
-# A heredoc body is data, not a command: `cat <<EOF` text that merely mentions
-# `gh pr create` must not arm the tripwire. Drop every heredoc body first, while
-# keeping the line that opens it (which may itself be a real `gh pr create`).
+# Match against the ORIGINAL command text directly — there is deliberately no
+# heredoc-body stripping here.
 #
-# The awk pass appends one final sentinel line reporting whether it hit EOF
-# still inside an unterminated heredoc (e.g. `<<-EOF` closed by a tab-indented
-# terminator we failed to recognize, or a `<<` inside quoted text that was
-# never really a heredoc at all). For an advisory hook a false positive costs
-# one ignorable reminder; a false negative silently defeats the whole
-# mechanism — so when parsing is uncertain, discard the stripped result and
-# match against the ORIGINAL, unstripped command instead.
+# A previous version tried to skip heredoc bodies so that `cat <<EOF` text
+# merely mentioning `gh pr create` would not arm the tripwire. Its awk parser
+# read a bare `<<` inside an ordinary quoted string — e.g. `echo "look: <<
+# STOP"` — as a real heredoc opener. When a later line in the command happened
+# to equal that phantom delimiter (e.g. a bare `STOP` line), the parser
+# terminated "cleanly": the unterminated-heredoc safety net never fired, and
+# every line in between — including a real `gh pr create --fill` — was
+# silently swallowed before matching ever ran. That is a silent bypass of the
+# whole hook, not a corner case, and it is the second independent way this
+# stripper found to disarm itself.
 #
-# NOTE: this whole assignment reads all of $command via a single awk pass
-# that never exits early (no early `exit`, no early-terminating consumer
-# downstream) — safe against SIGPIPE regardless of input size.
-awk_out=$(printf '%s\n' "$command" | awk '
-  {
-    line = $0
-    if (skipping) {
-      cmp = line
-      if (dash) { sub(/^\t+/, "", cmp) }
-      sub(/[ \t]+$/, "", cmp)
-      if (cmp == delim) { skipping = 0 }
-      next
-    }
-    print line
-    # A here-string (`<<<`) is not a heredoc opener; strip it from the copy
-    # we scan for openers so it cannot be mistaken for one.
-    scan = line
-    gsub(/<<</, "", scan)
-    if (match(scan, /<<-?[ \t]*[\047"]?[A-Za-z_][A-Za-z0-9_]*[\047"]?/)) {
-      d = substr(scan, RSTART, RLENGTH)
-      dash = (d ~ /^<<-/)
-      sub(/^<<-?[ \t]*/, "", d)
-      gsub(/[\047"]/, "", d)
-      delim = d
-      skipping = 1
-    }
-  }
-  END {
-    if (skipping) { print "###SWEEP_HOOK_UNTERMINATED###" }
-    else { print "###SWEEP_HOOK_OK###" }
-  }
-')
-sentinel="${awk_out##*$'\n'}"
-if [ "$sentinel" = "###SWEEP_HOOK_UNTERMINATED###" ]; then
-  stripped="$command"
-else
-  stripped="${awk_out%$'\n'*}"
-fi
-
+# For an advisory hook, the cost of the false positive the stripper existed to
+# prevent — one ignorable reminder when a heredoc body happens to mention
+# `gh pr create` — is far smaller than the cost of its failure mode: total,
+# undetectable silence on a real PR-creation command. Matching raw command
+# text accepts that rare cosmetic false positive in exchange for closing off
+# that whole class of silent bypass. See hooks/tests/test-pre-pr-sweep.sh for
+# the case this now deliberately arms on.
+#
 # grep is line-based and `.` cannot span newlines, so a shell line-continuation —
 # `gh pr edit 5 \` followed by `  --add-reviewer x` on the next line — would otherwise
 # never match either pattern below even though it is one logical command. Join
 # backslash-continued lines into a single line first (dropping the trailing `\`, keeping
-# a space so tokens don't fuse) before matching. Like the heredoc-stripper above, this
-# reads all of $stripped via a single awk pass with no early exit, so it is safe against
-# SIGPIPE regardless of input size.
-joined=$(printf '%s\n' "$stripped" | awk '
+# a space so tokens don't fuse) before matching. This reads all of $command via a single
+# awk pass with no early exit, so it is safe against SIGPIPE regardless of input size.
+#
+# Kept identical, character for character, to the continuation-join block in
+# scripts/bug-fix-test-check.sh — see hooks/tests/test-boundary-drift.sh, which fails the
+# suite if the two preprocessing idioms drift apart (the same class of bug as finding 3
+# there: two scripts detecting commands differently with nothing pinning them together).
+# CONTINUATION-JOIN-BEGIN
+joined=$(printf '%s\n' "$command" | awk '
   {
     line = (buf != "") ? buf $0 : $0
     if (line ~ /\\$/) {
@@ -92,6 +68,7 @@ joined=$(printf '%s\n' "$stripped" | awk '
   }
   END { if (buf != "") print buf }
 ')
+# CONTINUATION-JOIN-END
 
 # Exactly three invocations mean "a human is about to be asked to review".
 # `gh pr list`, `gh pr view`, and `gh pr edit --title` must not match.
