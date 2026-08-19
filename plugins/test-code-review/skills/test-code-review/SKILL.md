@@ -81,6 +81,49 @@ Look at the implementation diff and ask:
 - If the implementation has a fast path and a slow path, are both tested?
 - If there's a conditional (if/else, switch), does each branch have a test?
 
+### Step 4b: Failure-path coverage
+
+Step 4 asks which branches lack coverage. This step is narrower and catches what percentage-based
+coverage cannot: **for every error-handling construct in the implementation diff — `catch` /
+`rescue` / `except`, error returns, fallback defaults, retries — is there a test that *forces* that
+failure?**
+
+A path can be 100% covered and never once exercised as a failure. Coverage counts lines executed,
+not failures triggered.
+
+If you were given a list of enumerated failure modes (the caller may pass one), check coverage
+against that list rather than hunting the diff blind.
+
+**Assertion strength.** An assertion that would still pass under a plausible regression is not
+coverage:
+
+```kotlin
+// Weak: survives a 60x TTL cut. Duration.ofHours(12).toMinutes() is 720, and 720 > 0.
+assertThat(ttl).isGreaterThan(0L)
+
+// Strong: pins the actual value.
+assertThat(ttl).isCloseTo(EXPECTED_TTL_SECONDS, within(5L))
+```
+
+The same shape recurs as `assertNotNull` where the value matters, `hasSizeGreaterThan(0)` where the
+count matters, and "no exception thrown" where the result matters.
+
+**Verify the test by breaking the code.** When you cannot tell whether an assertion is real, make
+the obvious wrong change to the implementation, run the test, and confirm it fails. Then revert.
+
+```
+1. Change Duration.ofHours(ttlHours).toSeconds() to .toMinutes()
+2. Run the test — it must fail
+3. Revert
+```
+
+A test that still passes against deliberately broken code is not protecting anything, and the fact
+it was green told you nothing. Report it as a finding.
+
+**Boundary pairs for guards.** A new validation guard needs two tests, not one: rejection just
+outside the legal range, and acceptance at the smallest legal value. Only the second catches a
+guard written `> 1` when it meant `> 0`.
+
 ### Step 5: Check test setup correctness
 
 - Do test fixtures/helpers create realistic scenarios, or do they accidentally create scenarios where the bug can't manifest?
