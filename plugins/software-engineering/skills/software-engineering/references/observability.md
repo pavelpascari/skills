@@ -53,5 +53,8 @@ proc := NewTracedProcessor(NewStripeProcessor(...), tracer)
 - **Go:** OpenTelemetry has middleware for net/http, gRPC, sql — use it for wire-crossing operations.
 - **Java/Spring:** Spring Boot's auto-configuration covers most cross-cutting telemetry; add custom only for business KPIs.
 - **TypeScript/Node:** the OpenTelemetry SDK auto-instruments most HTTP / DB / cache libraries; manual instrumentation belongs in your application logic, not in protocol plumbing.
+- **Rust:** `tracing` is the ecosystem default — spans over log lines, with `tracing-opentelemetry` as the export bridge. Prefer `#[instrument]` on the operation over hand-rolled enter/exit, so an early `?` return cannot skip the exit.
+- **Python:** `opentelemetry-instrument` wraps the process without code changes, which covers the wire-crossing calls; reserve manual spans for business operations that no library can name for you.
+- **Ruby:** the OpenTelemetry SDK auto-instruments Rails, Sidekiq, and the common HTTP clients. Background jobs are the usual gap — a job that fails silently is invisible unless the span records it.
 
 **See also:** the **null-object pattern** in `code-design.md` (under Boundary validation). When an observability dependency is "optional" (metrics, logger, tracer), the answer is not nil-checks at every call site — it's a no-op implementation that the constructor wires in deliberately. Same compose-don't-inject instinct, applied to absence rather than enrichment.

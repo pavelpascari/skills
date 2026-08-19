@@ -53,9 +53,13 @@ func (h *Handler) GetOrder(w http.ResponseWriter, r *http.Request) {
 ```
 
 **Notes by language** — the principle is universal; apply it the way each language is idiomatic:
-- **Go:** use `errors.Is` / `errors.As` for discrimination; wrap with `%w` in `fmt.Errorf`.
-- **Python:** raise typed exceptions; use `raise ... from err` to preserve cause chains.
+- **Go:** use `errors.Is` / `errors.As` for discrimination; wrap with `%w` in `fmt.Errorf`. A bare `return err` loses the operation context — wrap at each layer that knows something the caller doesn't.
+- **Python:** raise typed exceptions; use `raise ... from err` to preserve cause chains. When suppression really is right, `contextlib.suppress(SpecificError)` says so out loud; `except: pass` says nothing and catches `KeyboardInterrupt` too.
 - **TypeScript:** since JS errors are stringly-typed, define a discriminated union (`type Result<T, E> = ...`) or use a library (e.g., neverthrow, fp-ts) for explicit error channels.
+- **Kotlin:** a sealed class or interface gives the boundary an exhaustive `when` over the failure cases the compiler can check. Be careful with `runCatching`: it catches `Throwable`, so inside a coroutine it swallows `CancellationException` and quietly breaks structured concurrency — rethrow it, or catch the specific exceptions you mean.
+- **Java:** prefer a small typed exception hierarchy over `throws Exception`. Never leave a `catch` block empty; if the failure is genuinely ignorable, log it and say why in the same line.
+- **Rust:** `thiserror` for library errors (typed, matchable by the caller) and `anyhow` at the binary's boundary. `?` propagates but carries no context of its own — add `.context("loading order")` at each layer, or the top-level error names a file descriptor instead of an operation.
+- **Ruby:** give the library one base error class and derive from it, so a caller can `rescue MyLib::Error` and catch everything you raise and nothing you don't. Never `rescue Exception` — that catches `Interrupt` and `SignalException`, making the process unkillable by Ctrl-C.
 
 ---
 
