@@ -5,7 +5,7 @@ Language-specific notes. The principles live in the topic references; this file 
 ## Testing
 - `pytest.raises` with `match=` pins the error message and proves the intended path failed. Without it, a `ValueError` raised by your own fixture satisfies the test.
 - `@pytest.mark.parametrize` is the table-driven equivalent when a bug has several boundaries — including the boundary pair (largest rejected value, smallest accepted one).
-- To verify an assertion binds: return `None` instead of the result, or widen a comparison to `>=`. A test asserting a `Mock` truthily, or `assertIsNotNone`, notices neither.
+- **Applying the mutation catalogue**: *replace the return value* — return `None` instead of the result; *shift a boundary* — widen `>` to `>=`. A test asserting a `Mock` truthily, or `assertIsNotNone`, notices neither. Beware that with a bare `Mock`, *delete a statement* often survives too — the call it removed was never really asserted on.
 
 ## Errors
 - Raise typed exceptions; use `raise ... from err` to preserve cause chains.

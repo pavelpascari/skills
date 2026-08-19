@@ -5,7 +5,7 @@ Language-specific notes. The principles live in the topic references; this file 
 ## Testing
 - Prefer a test returning `Result<(), E>` and using `?` over `unwrap()`, so a failure prints the error instead of a bare panic line.
 - If you use `#[should_panic]`, **always give it `expected = "..."`**. The bare form passes on *any* panic, including one from the test's own setup — the cheapest way to have a green test that proves nothing.
-- To verify an assertion binds: replace the returned value with `Default::default()`, or change `?` to `.unwrap_or_default()`. A test asserting `is_ok()` stays green; one asserting the value does not.
+- **Applying the mutation catalogue**: *replace the return value* — `Default::default()`; *delete a statement* — change `?` to `.unwrap_or_default()`, removing the propagation. A test asserting `is_ok()` stays green through both; one asserting the value does not. The compiler kills many operators outright, which is a genuine strength — the ones that still compile are the ones worth your attention.
 
 ## Errors
 - `thiserror` for library errors (typed, matchable by the caller); `anyhow` at the binary's boundary.

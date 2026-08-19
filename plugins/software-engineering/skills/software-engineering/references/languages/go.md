@@ -4,7 +4,7 @@ Language-specific notes. The principles live in the topic references; this file 
 
 ## Testing
 - Prefer table-driven tests when a bug has multiple boundary conditions — one row per condition.
-- To verify an assertion binds (`testing.md`, *verify the test by breaking the code*): flip `!=` to `==` in the error check, or return the zero value instead of the computed one. A test asserting only `err == nil` stays green through both.
+- **Applying the mutation catalogue** (`testing.md`, *verify the test by breaking the code*): *negate a condition* — flip `!=` to `==` in the error check; *replace the return value* — return the zero value instead of the computed one. A test asserting only `err == nil` stays green through both. *Delete a statement* is especially cheap here: remove the `if err != nil { return }` and see whether anything notices.
 
 ## Errors
 - Use `errors.Is` / `errors.As` for discrimination; wrap with `%w` in `fmt.Errorf`.

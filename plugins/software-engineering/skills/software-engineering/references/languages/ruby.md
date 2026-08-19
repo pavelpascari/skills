@@ -4,7 +4,7 @@ Language-specific notes. The principles live in the topic references; this file 
 
 ## Testing
 - `expect { ... }.to raise_error(MyError, /specific message/)` — the bare `raise_error` matches every error class, and `not_to raise_error` is not an assertion about the result at all.
-- To verify an assertion binds: return `nil` from the method, or change `==` to `.present?`. `be_truthy` survives both, since only `nil` and `false` are falsy — `0` and `""` are truthy.
+- **Applying the mutation catalogue**: *replace the return value* — return `nil`; *negate a condition* — swap `==` for `.present?`. `be_truthy` survives both, since only `nil` and `false` are falsy — `0` and `""` are truthy, so *replace a constant* with `0` is a good third probe.
 
 ## Errors
 - Give the library one base error class and derive from it, so a caller can `rescue MyLib::Error` and catch everything you raise and nothing you don't.
