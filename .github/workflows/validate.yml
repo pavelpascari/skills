@@ -18,8 +18,8 @@ jobs:
       # Runs before `claude plugin validate`, which reports a version mismatch as a
       # warning and still exits 0 — CI stayed green through two releases while
       # marketplace.json and plugin.json drifted apart.
-      - name: Check plugin versions are in sync
-        run: bash scripts/check-version-sync.sh
+      - name: Check plugin metadata is in sync
+        run: bash scripts/check-plugin-sync.sh
 
       - name: Validate marketplace
         run: claude plugin validate .

@@ -65,7 +65,9 @@ if ! echo "$joined" | grep -Eq "(^|${git_boundary})git[[:space:]]+commit(\$|[[:s
   exit 0
 fi
 
-# Extract the commit message: prefer the -m argument; otherwise, fall back to .git/COMMIT_EDITMSG.
+# Extract the commit message from the command itself. Only flags that carry the
+# message inline are usable here — see the note below on why there is no
+# .git/COMMIT_EDITMSG fallback.
 #
 # Git accepts `-m` both with a space before its value (`-m "text"`) and
 # attached directly to it (`-m"text"`, `-m'text'`, bare `-mtext`) — the
@@ -74,9 +76,8 @@ fi
 # fix heuristic on an entirely ordinary `git commit -m"fix: ..."`. The
 # `(^|[[:space:]])` prefix anchors `-m` to a real flag boundary (start of
 # line or preceded by whitespace) so the literal substring "-m" inside
-# `--message` is never mistaken for this flag; `--message`/`--message=...`
-# is a different flag and is deliberately not matched here (out of scope for
-# this fix). The three value alternatives — double-quoted, single-quoted, or
+# `--message` is never mistaken for this flag; `--message` is a different flag
+# and is matched separately below. The three value alternatives — double-quoted, single-quoted, or
 # bare — apply whether or not a space preceded them, and the quoted
 # alternatives only terminate on their own matching closing quote, so an
 # `-m` appearing inside the message text itself (already inside a quote) is
@@ -87,17 +88,40 @@ fi
 # is the whole pipeline's exit status even though `sed`/`head` downstream
 # both succeed on the resulting empty input, so a bare assignment here would
 # abort the script under `set -e` — on ordinary commits, not just malformed
-# input — before ever reaching the COMMIT_EDITMSG fallback below. `|| true`
+# input — before reaching the `--message` match below or the empty-message
+# exit. `|| true`
 # on the pipeline lets a "no match" resolve to an empty $message instead,
 # matching the `staged=$(git diff --cached ... || true)` guard later in this
 # script.
 message=$(echo "$joined" | grep -oE -- "(^|[[:space:]])-m([[:space:]]+(\"[^\"]*\"|'[^']*'|[^[:space:]]+)|\"[^\"]*\"|'[^']*'|[^[:space:]\"']+)" | sed -E 's/^[[:space:]]?-m[[:space:]]*//; s/^["'"'"']//; s/["'"'"']$//' | head -1 || true)
-if [ -z "$message" ] && [ -r .git/COMMIT_EDITMSG ]; then
-  # Guarded for the same reason, even though a file already passed `-r` is
-  # very unlikely to fail to read: keep every command that reads external
-  # state on a legitimately-fallible path guarded the same way.
-  message=$(head -1 .git/COMMIT_EDITMSG 2>/dev/null || true)
+# `--message` is the same intent expressed as a long flag, and is just as
+# knowable here as `-m`. Git's parse-options accepts BOTH `--message=text` and
+# `--message text` — matching only the `=` form leaves the spaced form silently
+# unmatched, which is the same silent-by-construction miss the attached `-m`
+# forms had. The separator alternation `(=|[[:space:]]+)` covers both, and the
+# value alternatives mirror the `-m` pattern above.
+if [ -z "$message" ]; then
+  message=$(echo "$joined" | grep -oE -- "(^|[[:space:]])--message(=|[[:space:]]+)(\"[^\"]*\"|'[^']*'|[^[:space:]]+)" | sed -E 's/^[[:space:]]?--message(=|[[:space:]]+)//; s/^["'"'"']//; s/["'"'"']$//' | head -1 || true)
 fi
+
+# There is deliberately NO fallback to .git/COMMIT_EDITMSG.
+#
+# This is a PreToolUse hook: it runs *before* git does. On a commit with no
+# message flag (`git commit`, `git commit --amend`, `git commit -a`), the
+# message does not exist yet — the editor that writes COMMIT_EDITMSG opens
+# after this hook has already returned. What sits in that file at hook time is
+# the *previous* commit's message.
+#
+# The fallback that used to be here therefore did not read "the message about
+# to be written". It read the last one, and warned about it: commit a bug fix
+# with a test, then commit an unrelated refactor via the editor, and this hook
+# would warn on the refactor because the stale file still said "fix: ...".
+# A warning derived from the wrong commit is worse than no warning, because it
+# teaches the reader to dismiss the hook.
+#
+# So when the message is not determinable, this hook says nothing. Catching
+# editor-authored commits needs a hook that runs after git, which is a
+# different mechanism, not a fallback bolted onto this one.
 
 if [ -z "$message" ]; then
   exit 0
