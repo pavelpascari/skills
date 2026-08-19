@@ -18,11 +18,43 @@
 - [ ] Commits are curated into a reviewable story.
 - [ ] Docs / runbooks updated if behavior, ops, or contracts changed.
 - [ ] No drive-by changes hiding in the diff.
+- [ ] Every new failure path has a test that forces the failure.
+- [ ] `docs/deferred-review-flags.md` is drained — every entry fixed, ticketed, or accepted with a
+      rationale.
 
 **Red flags:**
 - "Tests pass" being the only evidence offered.
 - A PR with one giant commit "implement feature".
 - A PR that touches files unrelated to the stated goal.
+
+---
+
+## Pre-review sweep
+
+**Rule:** Before asking a human to review, run the `pre-pr-sweep` skill. Deferred findings get an
+explicit disposition, failure modes are enumerated from the diff, and the PR description is written
+to point the reviewer at where the risk actually is.
+
+**Why:** Task-scoped review answers *does this match the brief* and correctly defers cross-cutting
+concerns. Branch-level review answers *is this consistent*. Neither asks *what happens when this
+fails* — so those findings arrive from a reviewer instead, on code that passed CI at high coverage.
+The gap is a missing stage, not insufficient care, and no amount of remembering closes it.
+
+The corollary matters as much as the rule: **the sweep runs identically on a 5-line PR.** Rigor
+that scales with how important a change feels is precisely why the small ones leak.
+
+**How to apply:**
+- When a review step's own output records a judgement to defer something — not what someone
+  privately noticed — append it to `docs/deferred-review-flags.md` with the file, line, and what
+  was noticed. Gitignore the file; it is a working document.
+- Run the sweep before `gh pr create`, `gh pr ready`, or adding a reviewer.
+- Let the analytical passes run blind. A reviewer who knows why the code was written that way will
+  accept the reason — that is the bias the whole design exists to remove.
+
+**Red flags:**
+- A ledger entry that has been open across three PRs.
+- "It's a small PR" offered as a reason to skip a step.
+- A PR description whose `How to review` section names no risky hunk.
 
 ---
 

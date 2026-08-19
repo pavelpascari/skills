@@ -120,6 +120,32 @@ def update_order(o, quantity):
 
 ---
 
+## Verify the test by breaking the code
+
+**Rule:** When you cannot tell whether an assertion is real, make the obvious wrong change to the
+implementation, run the test, and confirm it fails. Then revert.
+
+**Why:** A green test is evidence only if it can go red. Assertions drift toward the permissive —
+`isGreaterThan(0)`, `assertNotNull`, "does not throw" — and each of those survives regressions the
+test was written to prevent. `Duration.ofHours(12).toMinutes()` is 720, which is greater than zero,
+so a TTL assertion written that way accepts a 60x cut that would quietly dismantle a cache. The
+only way to know an assertion binds is to make it fail on purpose.
+
+**How to apply:**
+- Pick the regression a reader would most plausibly introduce: a unit swap, an off-by-one, a
+  flipped comparison, a removed guard.
+- Apply it, run the test, confirm red for the right reason, revert.
+- If it stays green, the assertion is decorative. Tighten it and repeat.
+- Worth doing for any assertion guarding a value where the *magnitude* matters, not just presence.
+
+**Red flags:**
+- An assertion on a duration, size, or count that only checks the sign.
+- "The test passes" offered as evidence a fix works, with no red state ever observed.
+- A boundary guard with a rejection test but no smallest-legal-value test — `> 1` written where
+  `> 0` was meant passes the first and fails only the second.
+
+---
+
 ## See also: `test-code-review` plugin
 
 For reviewing test diffs specifically — catching weakened assertions, missing coverage, and tests rewritten to match buggy behavior instead of catching it — see the companion `test-code-review` plugin in this marketplace. Where this reference defines the discipline (TDD, reproduce-then-fix, the test pyramid), `test-code-review` is the actionable review pass for the diff in front of you.

@@ -5,24 +5,98 @@
 set -euo pipefail
 
 input=$(cat)
-tool_name=$(echo "$input" | jq -r '.tool_name // ""')
+
+# Malformed JSON (or no JSON at all, e.g. empty stdin) makes jq exit non-zero.
+# A bare assignment failing there would abort the script under `set -e` with
+# jq's own exit status — exactly the "hooks never block" violation this
+# script guards against everywhere else. `|| exit 0` keeps the failure from
+# ever reaching `set -e`.
+tool_name=$(jq -r '.tool_name // ""' <<<"$input" 2>/dev/null) || exit 0
 
 if [ "$tool_name" != "Bash" ]; then
   exit 0
 fi
 
-command=$(echo "$input" | jq -r '.tool_input.command // ""')
+command=$(jq -r '.tool_input.command // ""' <<<"$input" 2>/dev/null) || exit 0
+
+# grep is line-based and `.` cannot span newlines, so a shell line-continuation —
+# `git \` followed by `  commit -m "fix: x"` on the next line — would otherwise never
+# match the pattern below even though it is one logical command. Join backslash-continued
+# lines into a single line first (dropping the trailing `\`, keeping a space so tokens
+# don't fuse) before matching. This reads all of $command via a single awk pass with no
+# early exit, so it is safe against SIGPIPE regardless of input size.
+#
+# Kept identical, character for character, to the continuation-join block in
+# hooks/pre-pr-sweep-check.sh — see hooks/tests/test-boundary-drift.sh, which fails the
+# suite if the two preprocessing idioms drift apart. The two scripts had already drifted
+# once on the boundary class below (this one was missing `(` entirely); this same class of
+# bug (one script preprocesses differently than the other) is exactly what let a
+# continued `git \` + `  commit -m "fix: x"` slip past this hook silently (blocking
+# finding 2) — pre-pr-sweep-check.sh already joined continuations, this script did not.
+# CONTINUATION-JOIN-BEGIN
+joined=$(printf '%s\n' "$command" | awk '
+  {
+    line = (buf != "") ? buf $0 : $0
+    if (line ~ /\\$/) {
+      sub(/\\$/, " ", line)
+      buf = line
+    } else {
+      print line
+      buf = ""
+    }
+  }
+  END { if (buf != "") print buf }
+')
+# CONTINUATION-JOIN-END
 
 # Only interested in `git commit ...`. Match `git commit` as a word boundary so
 # `git commit-tree` and other subcommands are excluded.
-if ! echo "$command" | grep -Eq '(^|[[:space:];&|])git[[:space:]]+commit($|[[:space:]])'; then
+#
+# Boundary class: kept identical, character for character, to the
+# `gh_boundary` class in hooks/pre-pr-sweep-check.sh (see that file's comment
+# for the full rationale — quoted wrappers like `eval "..."`/`bash -c
+# "..."`/`` `...` `` need to match, and a subshell-wrapped commit like
+# `(git commit -m "fix: ...")` needs its `(` in the class too). The two
+# scripts had already drifted once (this one was missing `(` entirely) — see
+# hooks/tests/test-boundary-drift.sh, which fails the suite if they drift
+# apart again.
+git_boundary=$(printf '%b' '[[:space:];&|(\042\047\0140]')
+if ! echo "$joined" | grep -Eq "(^|${git_boundary})git[[:space:]]+commit(\$|[[:space:]])"; then
   exit 0
 fi
 
 # Extract the commit message: prefer the -m argument; otherwise, fall back to .git/COMMIT_EDITMSG.
-message=$(echo "$command" | grep -oE -- '-m[[:space:]]+("[^"]*"|'"'"'[^'"'"']*'"'"'|[^[:space:]]+)' | sed -E 's/^-m[[:space:]]+//; s/^["'"'"']//; s/["'"'"']$//' | head -1)
+#
+# Git accepts `-m` both with a space before its value (`-m "text"`) and
+# attached directly to it (`-m"text"`, `-m'text'`, bare `-mtext`) — the
+# spaced-only pattern this used to have (`-m[[:space:]]+(...)`) silently
+# missed every attached form, extracting an empty message and skipping the
+# fix heuristic on an entirely ordinary `git commit -m"fix: ..."`. The
+# `(^|[[:space:]])` prefix anchors `-m` to a real flag boundary (start of
+# line or preceded by whitespace) so the literal substring "-m" inside
+# `--message` is never mistaken for this flag; `--message`/`--message=...`
+# is a different flag and is deliberately not matched here (out of scope for
+# this fix). The three value alternatives — double-quoted, single-quoted, or
+# bare — apply whether or not a space preceded them, and the quoted
+# alternatives only terminate on their own matching closing quote, so an
+# `-m` appearing inside the message text itself (already inside a quote) is
+# just message content, not a second flag boundary.
+#
+# `grep -oE` legitimately finds no match on any commit with no `-m` (`git
+# commit`, `--amend`, `-a`, ...) and exits 1. Under `pipefail` that failure
+# is the whole pipeline's exit status even though `sed`/`head` downstream
+# both succeed on the resulting empty input, so a bare assignment here would
+# abort the script under `set -e` — on ordinary commits, not just malformed
+# input — before ever reaching the COMMIT_EDITMSG fallback below. `|| true`
+# on the pipeline lets a "no match" resolve to an empty $message instead,
+# matching the `staged=$(git diff --cached ... || true)` guard later in this
+# script.
+message=$(echo "$joined" | grep -oE -- "(^|[[:space:]])-m([[:space:]]+(\"[^\"]*\"|'[^']*'|[^[:space:]]+)|\"[^\"]*\"|'[^']*'|[^[:space:]\"']+)" | sed -E 's/^[[:space:]]?-m[[:space:]]*//; s/^["'"'"']//; s/["'"'"']$//' | head -1 || true)
 if [ -z "$message" ] && [ -r .git/COMMIT_EDITMSG ]; then
-  message=$(head -1 .git/COMMIT_EDITMSG)
+  # Guarded for the same reason, even though a file already passed `-r` is
+  # very unlikely to fail to read: keep every command that reads external
+  # state on a legitimately-fallible path guarded the same way.
+  message=$(head -1 .git/COMMIT_EDITMSG 2>/dev/null || true)
 fi
 
 if [ -z "$message" ]; then

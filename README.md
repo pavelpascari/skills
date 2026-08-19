@@ -19,7 +19,7 @@ Then install individual plugins:
 | Plugin | Description | Version |
 |--------|-------------|---------|
 | [`test-code-review`](./plugins/test-code-review) | Review test code changes for correctness, catching weakened assertions and tests rewritten to match buggy behavior. | 1.0.0 |
-| [`software-engineering`](./plugins/software-engineering) | Encodes a coherent set of software engineering principles (23 in total) to apply during coding tasks — covers code design, naming, testing, errors, review process, maintenance, and observability. Includes hooks for definition-of-done and bug-fix-test enforcement. | 1.0.0 |
+| [`software-engineering`](./plugins/software-engineering) | Encodes a coherent set of software engineering principles to apply during coding tasks, plus a pre-PR sweep that forces deferred findings to a decision and enumerates failure modes before review is requested. | 1.0.0 |
 
 ## Requirements
 

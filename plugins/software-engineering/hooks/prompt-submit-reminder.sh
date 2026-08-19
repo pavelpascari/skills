@@ -5,7 +5,13 @@
 set -euo pipefail
 
 input=$(cat)
-prompt=$(echo "$input" | jq -r '.prompt // ""')
+
+# Malformed JSON (or no JSON at all, e.g. empty stdin) makes jq exit non-zero.
+# A bare assignment failing there would abort the script under `set -e` with
+# jq's own exit status — exactly the "hooks never block" violation this
+# script guards against everywhere else. `|| exit 0` keeps the failure from
+# ever reaching `set -e`.
+prompt=$(jq -r '.prompt // ""' <<<"$input" 2>/dev/null) || exit 0
 
 if [ -z "$prompt" ]; then
   exit 0
@@ -26,6 +32,7 @@ Definition-of-Done — keep these in mind while implementing:
 - Adjacent features checked for regressions
 - PR description tells the reviewer what, why, and how to verify
 - Commits curated into a reviewable story
-- Docs / runbooks updated if behavior or contracts changed"
+- Docs / runbooks updated if behavior or contracts changed
+- A review step's own written judgement to defer something — not what someone privately noticed — is recorded in docs/deferred-review-flags.md"
 
 echo "$message" | jq -Rs '{systemMessage: .}'

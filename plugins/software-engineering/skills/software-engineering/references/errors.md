@@ -56,3 +56,63 @@ func (h *Handler) GetOrder(w http.ResponseWriter, r *http.Request) {
 - **Go:** use `errors.Is` / `errors.As` for discrimination; wrap with `%w` in `fmt.Errorf`.
 - **Python:** raise typed exceptions; use `raise ... from err` to preserve cause chains.
 - **TypeScript:** since JS errors are stringly-typed, define a discriminated union (`type Result<T, E> = ...`) or use a library (e.g., neverthrow, fp-ts) for explicit error channels.
+
+---
+
+## Failure containment — blast radius, not "is it caught"
+
+**Rule:** For every operation that can fail, the question is not whether an exception is caught but
+what breaks when it isn't. Name the blast radius, then decide whether that radius is acceptable.
+A path documented as "best-effort" must have a handler that makes it so.
+
+**Why:** "Is there a try/catch" is answerable by looking at one function. "What breaks" needs the
+call site, the thread it runs on, and the framework's behaviour — which is why it gets skipped, and
+why the failures it catches are the expensive ones. A metrics gauge with no handler does not lose
+one metric; an uncaught exception from one value-supplier fails the whole scrape. A batch that
+throws midway does not simply fail; already-queued commands sit unflushed in a connection buffer
+and ride along on a later, unrelated batch.
+
+A "best-effort" claim with no catch behind it is the same defect wearing a comment. Nobody decided
+that a bookkeeping blip should return a 500 to a customer — it just was never considered, and the
+docstring saying otherwise made it look considered.
+
+This is not the "catch and continue" anti-pattern *Layered error handling* above forbids. That
+phrase names a catch with no logging and no considered decision — the failure becomes invisible,
+and execution proceeds as though nothing happened. A contained path is the opposite: the blast
+radius was named, the catch is deliberate, the degraded outcome is logged, and the choice is
+documented. It is exactly the "unless the default is genuinely the right behavior (and document
+why)" exception that section already carves out — generalized past that phrasing's literal
+*return default*: a best-effort background write that fails has no value to default at all, only a
+log line and a stop, but the same test applies — was the catch deliberate, logged, and its
+degraded outcome documented as the right one. This section is what earning that exception looks
+like in practice, void operations included.
+
+**How to apply:**
+- For each new external call, batched operation, background callback, or metrics supplier, write
+  down what breaks if it throws — the request, the scrape, the consumer group, the whole process.
+- If the answer is bigger than the operation's own importance, contain it: catch, log with enough
+  context to identify the dropped work, and degrade in one direction only.
+- If a comment, docstring, or PR description calls a path best-effort, fire-and-forget, or
+  bookkeeping, the catch is not optional — the claim is a contract.
+- Log the containment. A silently swallowed failure and a contained one look identical in
+  production unless the log line exists.
+- Every containment gets a test that forces the failure. See `test-code-review` Step 4b.
+
+**Red flags:**
+- An exception path whose blast radius nobody has stated.
+- Code called "best-effort" in prose with no handler in the body.
+- `catch` blocks that log nothing, so the degraded mode is invisible.
+- A failure path with 100% line coverage and no test that triggers it.
+
+**Example:**
+```kotlin
+// Before: one failing Redis read fails the entire Prometheus scrape.
+Gauge.builder(QUEUE_PENDING) { pendingCount() }.register(registry)
+
+// After: contained, and NaN rather than 0.0 — zero is a plausible, reassuring
+// reading that would hide the outage.
+Gauge.builder(QUEUE_PENDING) { orUnknown { pendingCount() } }.register(registry)
+
+private inline fun orUnknown(read: () -> Double): Double =
+    runCatching(read).getOrDefault(Double.NaN)
+```

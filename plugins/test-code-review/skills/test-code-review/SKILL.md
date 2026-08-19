@@ -81,6 +81,49 @@ Look at the implementation diff and ask:
 - If the implementation has a fast path and a slow path, are both tested?
 - If there's a conditional (if/else, switch), does each branch have a test?
 
+### Step 4b: Failure-path coverage
+
+Step 4 asks which branches lack coverage. This step is narrower and catches what percentage-based
+coverage cannot: **for every error-handling construct in the implementation diff — `catch` /
+`rescue` / `except`, error returns, fallback defaults, retries — is there a test that *forces* that
+failure?**
+
+A path can be 100% covered and never once exercised as a failure. Coverage counts lines executed,
+not failures triggered.
+
+If you were given a list of enumerated failure modes (the caller may pass one), check coverage
+against that list rather than hunting the diff blind.
+
+**Assertion strength.** An assertion that would still pass under a plausible regression is not
+coverage:
+
+```kotlin
+// Weak: survives a 60x TTL cut. Duration.ofHours(12).toMinutes() is 720, and 720 > 0.
+assertThat(ttl).isGreaterThan(0L)
+
+// Strong: pins the actual value.
+assertThat(ttl).isCloseTo(EXPECTED_TTL_SECONDS, within(5L))
+```
+
+The same shape recurs as `assertNotNull` where the value matters, `hasSizeGreaterThan(0)` where the
+count matters, and "no exception thrown" where the result matters.
+
+**Verify the test by breaking the code.** When you cannot tell whether an assertion is real, make
+the obvious wrong change to the implementation, run the test, and confirm it fails. Then revert.
+
+```
+1. Change Duration.ofHours(ttlHours).toSeconds() to .toMinutes()
+2. Run the test — it must fail
+3. Revert
+```
+
+A test that still passes against deliberately broken code is not protecting anything, and the fact
+it was green told you nothing. Report it as a finding.
+
+**Boundary pairs for guards.** A new validation guard needs two tests, not one: rejection just
+outside the legal range, and acceptance at the smallest legal value. Only the second catches a
+guard written `> 1` when it meant `> 0`.
+
 ### Step 5: Check test setup correctness
 
 - Do test fixtures/helpers create realistic scenarios, or do they accidentally create scenarios where the bug can't manifest?
@@ -102,13 +145,18 @@ For each weakened assertion:
 - Code paths in the implementation diff that lack test coverage
 - Specific test cases to add
 
+### Failure-Path Coverage (if any)
+Error-handling and failure-path gaps belong here, not under Missing Coverage, New Test Quality, or Weakened Assertions, even where those buckets' general wording could also apply. An untested `catch`/`rescue`/`except` block, error return, fallback default, or retry is always a Failure-Path Coverage finding — and so is any assertion on one of these paths that is too weak to prove the failure fired, whether that assertion was just written or was weakened by this diff. For each failure path that lacks a forcing test, or whose only test carries an assertion too weak to prove the failure was actually triggered:
+- **File:line** — the failure path, what test (if any) touches it, and why the coverage is insufficient
+- Recommendation: add a test that forces the failure and asserts on the actual outcome / strengthen the existing assertion so it fails when the failure-handling logic breaks
+
 ### New Test Quality (if any)
 - Whether new tests would catch the bug they claim to test
 - Assertion specificity issues
 
 ### Verdict
 One of:
-- **Looks good** — tests are correct and comprehensive
+- **Looks good** — tests are correct and comprehensive, with no unresolved findings above
 - **Needs attention** — specific issues listed above should be addressed
 - **Suspicious** — test changes may be papering over a bug; implementation should be re-examined
 ```

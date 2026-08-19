@@ -25,6 +25,12 @@ These apply always. If you find yourself about to violate one, stop and reconsid
 2. **Bug fix = reproduce-then-fix.** Every bug fix begins with a failing test that demonstrates the bug. See `references/testing.md`.
 3. **Never merge to main without a PR.** All changes go through review. See `references/process-and-review.md`.
 4. **Definition of done is a chain, not a checkbox.** See `references/process-and-review.md`.
+5. **A written deferral goes on the ledger.** When a review step's own output records a judgement —
+   "out of scope", "not blocking", "worth flagging but inherited" — append it to
+   `docs/deferred-review-flags.md` before moving on; the rule is checkable against that written
+   judgement, not against what someone privately noticed. The ledger is a convenience, not the
+   guarantee — the pre-review sweep's failure-mode pass re-derives from the diff every time,
+   and that is what actually guarantees coverage. See `references/process-and-review.md`.
 
 ## Code design
 
@@ -69,6 +75,8 @@ These apply always. If you find yourself about to violate one, stop and reconsid
 - **Make it correct → clear → concise → fast** — four priorities, sequenced; do not reorder.
 - **Prototype before production** — for non-trivial new ideas, validate with throwaway code before designing contracts.
 - **Rules have costs** — every rule, convention, or lint check must pull its weight; audit them.
+- **Pre-review sweep** — before asking a human to review, run the `pre-pr-sweep` skill: failure
+  containment, config guards, failure-path tests, ledger drained, PR narrative written.
 
 ## Change and maintenance
 
