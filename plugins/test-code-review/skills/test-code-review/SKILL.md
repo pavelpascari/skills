@@ -145,13 +145,18 @@ For each weakened assertion:
 - Code paths in the implementation diff that lack test coverage
 - Specific test cases to add
 
+### Failure-Path Coverage (if any)
+For each failure path (catch/rescue/except, error return, fallback default, retry) that lacks a forcing test, or whose only test carries an assertion too weak to prove the failure was actually triggered:
+- **File:line** — the failure path, what test (if any) touches it, and why the coverage is insufficient
+- Recommendation: add a test that forces the failure and asserts on the actual outcome / strengthen the existing assertion so it fails when the failure-handling logic breaks
+
 ### New Test Quality (if any)
 - Whether new tests would catch the bug they claim to test
 - Assertion specificity issues
 
 ### Verdict
 One of:
-- **Looks good** — tests are correct and comprehensive
+- **Looks good** — tests are correct and comprehensive, with no unresolved findings above, including no failure paths left unforced
 - **Needs attention** — specific issues listed above should be addressed
 - **Suspicious** — test changes may be papering over a bug; implementation should be re-examined
 ```
