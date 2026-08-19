@@ -146,7 +146,7 @@ For each weakened assertion:
 - Specific test cases to add
 
 ### Failure-Path Coverage (if any)
-For each failure path (catch/rescue/except, error return, fallback default, retry) that lacks a forcing test, or whose only test carries an assertion too weak to prove the failure was actually triggered:
+Error-handling and failure-path gaps belong here, not under Missing Coverage, New Test Quality, or Weakened Assertions, even where those buckets' general wording could also apply. An untested `catch`/`rescue`/`except` block, error return, fallback default, or retry is always a Failure-Path Coverage finding — and so is any assertion on one of these paths that is too weak to prove the failure fired, whether that assertion was just written or was weakened by this diff. For each failure path that lacks a forcing test, or whose only test carries an assertion too weak to prove the failure was actually triggered:
 - **File:line** — the failure path, what test (if any) touches it, and why the coverage is insufficient
 - Recommendation: add a test that forces the failure and asserts on the actual outcome / strengthen the existing assertion so it fails when the failure-handling logic breaks
 
@@ -156,7 +156,7 @@ For each failure path (catch/rescue/except, error return, fallback default, retr
 
 ### Verdict
 One of:
-- **Looks good** — tests are correct and comprehensive, with no unresolved findings above, including no failure paths left unforced
+- **Looks good** — tests are correct and comprehensive, with no unresolved findings above
 - **Needs attention** — specific issues listed above should be addressed
 - **Suspicious** — test changes may be papering over a bug; implementation should be re-examined
 ```
