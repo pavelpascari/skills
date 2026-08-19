@@ -92,12 +92,31 @@ fi
 # matching the `staged=$(git diff --cached ... || true)` guard later in this
 # script.
 message=$(echo "$joined" | grep -oE -- "(^|[[:space:]])-m([[:space:]]+(\"[^\"]*\"|'[^']*'|[^[:space:]]+)|\"[^\"]*\"|'[^']*'|[^[:space:]\"']+)" | sed -E 's/^[[:space:]]?-m[[:space:]]*//; s/^["'"'"']//; s/["'"'"']$//' | head -1 || true)
-if [ -z "$message" ] && [ -r .git/COMMIT_EDITMSG ]; then
-  # Guarded for the same reason, even though a file already passed `-r` is
-  # very unlikely to fail to read: keep every command that reads external
-  # state on a legitimately-fallible path guarded the same way.
-  message=$(head -1 .git/COMMIT_EDITMSG 2>/dev/null || true)
+# `--message=text` is the same intent expressed as a long flag, and is just as
+# knowable here as `-m`. Matched separately because its value is delimited by
+# `=` rather than by a space or an attached quote.
+if [ -z "$message" ]; then
+  message=$(echo "$joined" | grep -oE -- "(^|[[:space:]])--message=(\"[^\"]*\"|'[^']*'|[^[:space:]]+)" | sed -E 's/^[[:space:]]?--message=//; s/^["'"'"']//; s/["'"'"']$//' | head -1 || true)
 fi
+
+# There is deliberately NO fallback to .git/COMMIT_EDITMSG.
+#
+# This is a PreToolUse hook: it runs *before* git does. On a commit with no
+# message flag (`git commit`, `git commit --amend`, `git commit -a`), the
+# message does not exist yet — the editor that writes COMMIT_EDITMSG opens
+# after this hook has already returned. What sits in that file at hook time is
+# the *previous* commit's message.
+#
+# The fallback that used to be here therefore did not read "the message about
+# to be written". It read the last one, and warned about it: commit a bug fix
+# with a test, then commit an unrelated refactor via the editor, and this hook
+# would warn on the refactor because the stale file still said "fix: ...".
+# A warning derived from the wrong commit is worse than no warning, because it
+# teaches the reader to dismiss the hook.
+#
+# So when the message is not determinable, this hook says nothing. Catching
+# editor-authored commits needs a hook that runs after git, which is a
+# different mechanism, not a fallback bolted onto this one.
 
 if [ -z "$message" ]; then
   exit 0

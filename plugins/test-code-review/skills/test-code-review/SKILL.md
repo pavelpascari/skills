@@ -154,6 +154,22 @@ Error-handling and failure-path gaps belong here, not under Missing Coverage, Ne
 - Whether new tests would catch the bug they claim to test
 - Assertion specificity issues
 
+### Misleading Test Narrative (if any)
+Findings from Step 2 about what a test *says* versus what it *does* — a comment rewritten to
+describe weaker behavior, a test name that no longer matches its assertions, a docstring
+rationalizing a behavior change. These are not assertion changes, so they do not belong under
+Weakened Assertions; the assertion may be untouched while the prose around it now lies.
+- **File:line** — what the name or comment claims, what the test actually exercises now
+- Recommendation: restore the original behavior / rename the test to what it really checks
+
+### Test Setup Fidelity (if any)
+Findings from Step 5 about the scenario a test constructs — a fixture that accidentally makes the
+bug unreproducible, a stub returning the right answer regardless of input, a mock whose signature
+has drifted from the real collaborator. The assertions may be perfectly strong; the setup means
+they never had a chance to fail.
+- **File:line** — what the fixture or double does, and which real condition it fails to reproduce
+- Recommendation: the specific setup change that would let the test fail when the code is wrong
+
 ### Verdict
 One of:
 - **Looks good** — tests are correct and comprehensive, with no unresolved findings above

@@ -62,23 +62,28 @@ assert_silent "bug-fix: bare 'git commit' with no -m and no COMMIT_EDITMSG does 
   "$REPO" "$SCRIPT" "$(bash_json "git commit")"
 rm -rf "$REPO"
 
-# Bare `git commit`, no `-m`, but a real `.git/COMMIT_EDITMSG` left by an
-# editor-driven commit describes a bug fix and no test file is staged. This
-# proves the COMMIT_EDITMSG fallback doesn't just get reached — it drives the
-# warning end to end.
+# INVERTED, deliberately. This case used to assert that a bare `git commit`
+# falls back to `.git/COMMIT_EDITMSG` and warns from it. That fallback has been
+# removed: this is a PreToolUse hook, so on an editor-authored commit the
+# message has not been written yet and that file still holds the PREVIOUS
+# commit's message. The old behaviour warned about the wrong commit — fix a bug
+# with a test, then commit an unrelated refactor via the editor, and the stale
+# "fix: ..." would trigger a warning on the refactor.
+#
+# The assertion is now the opposite: a populated COMMIT_EDITMSG must be ignored.
 REPO="$(make_repo)"
 printf 'fix: handle nil pointer\n' > "$REPO/.git/COMMIT_EDITMSG"
 printf 'x\n' > "$REPO/handler.go"
 git -C "$REPO" add handler.go
-assert_contains "bug-fix: bare 'git commit' falls back to COMMIT_EDITMSG and warns" \
-  "$REPO" "$SCRIPT" "$(bash_json "git commit")" \
-  "no test changes"
+assert_silent "bug-fix: bare 'git commit' ignores a stale COMMIT_EDITMSG" \
+  "$REPO" "$SCRIPT" "$(bash_json "git commit")"
 rm -rf "$REPO"
 
-# `git commit --amend` with no `-m`: COMMIT_EDITMSG names a fix, but a test
-# file is staged this time, so the fallback-driven check must stay silent —
-# proving both that --amend doesn't abort and that the "tests present" path
-# still works when the message came from the fallback.
+# `git commit --amend` with no `-m`: must not abort on the `grep -oE` no-match.
+# It is silent because no message flag is present, so the message is not
+# determinable at PreToolUse time — NOT because a test file happens to be
+# staged, and NOT because COMMIT_EDITMSG was consulted. Both are present here
+# only to prove they make no difference to the outcome.
 REPO="$(make_repo)"
 printf 'fix: handle nil pointer\n' > "$REPO/.git/COMMIT_EDITMSG"
 printf 'x\n' > "$REPO/handler.go"
@@ -88,8 +93,9 @@ assert_silent "bug-fix: 'git commit --amend' with no -m does not abort" \
   "$REPO" "$SCRIPT" "$(bash_json "git commit --amend")"
 rm -rf "$REPO"
 
-# `git commit -a` with no `-m` and a non-fix fallback message: must not
-# abort and must stay silent (message doesn't match the fix heuristic).
+# `git commit -a` with no `-m`: must not abort, and must stay silent because
+# no message flag is present. The COMMIT_EDITMSG content is irrelevant now and
+# is left here only to show it is not read.
 REPO="$(make_repo)"
 printf 'chore: bump deps\n' > "$REPO/.git/COMMIT_EDITMSG"
 printf 'x\n' > "$REPO/handler.go"
@@ -192,4 +198,28 @@ if printf '%s' "$out" | jq -e 'type == "object" and has("systemMessage")' >/dev/
 else
   fail "bug-fix: stdout is JSON with a systemMessage key" "got: $out"
 fi
+rm -rf "$REPO"
+
+# --- message forms knowable before git runs ---
+
+# `--message=` is the long form of `-m` and just as determinable at PreToolUse time.
+REPO="$(make_repo)"
+printf 'x\n' > "$REPO/handler.go"
+git -C "$REPO" add handler.go
+assert_contains "bug-fix: --message= form is recognised" \
+  "$REPO" "$SCRIPT" "$(bash_json "git commit --message='fix: nil pointer'")" \
+  "no test changes"
+rm -rf "$REPO"
+
+# A stale .git/COMMIT_EDITMSG must NOT be read. This is a PreToolUse hook: on an
+# editor-authored commit the message does not exist yet, and that file holds the
+# PREVIOUS commit's message. Warning from it means warning about the wrong commit.
+REPO="$(make_repo)"
+printf 'x\n' > "$REPO/refactor.go"
+git -C "$REPO" add refactor.go
+printf 'fix: a bug fixed in some earlier commit\n' > "$REPO/.git/COMMIT_EDITMSG"
+assert_silent "bug-fix: a stale COMMIT_EDITMSG does not trigger a warning" \
+  "$REPO" "$SCRIPT" "$(bash_json "git commit")"
+assert_silent "bug-fix: a stale COMMIT_EDITMSG does not trigger on --amend either" \
+  "$REPO" "$SCRIPT" "$(bash_json "git commit --amend")"
 rm -rf "$REPO"

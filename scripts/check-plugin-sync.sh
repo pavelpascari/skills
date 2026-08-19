@@ -1,11 +1,13 @@
 #!/bin/bash
-# Every plugin declares its version twice: in the marketplace entry and in its own
+# Every plugin declares its identity twice: in the marketplace entry and in its own
 # plugin.json. At install time plugin.json wins (calculatePluginVersion precedence),
-# so a marketplace entry that disagrees is not a cosmetic mismatch — it is a version
-# users are shown but never receive.
+# so a marketplace entry that disagrees is not a cosmetic mismatch — it is what users
+# are shown but never receive. That applies to the version, and equally to the
+# description and keywords, which are what someone reads when choosing to install.
 #
-# `claude plugin validate` reports this as a warning and still exits 0, so CI stayed
-# green through two releases while the two files drifted apart. This check fails.
+# `claude plugin validate` reports the version case as a warning and still exits 0,
+# so CI stayed green through two releases while the files drifted apart. It does not
+# check description or keywords at all. This check fails on any of them.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -47,6 +49,27 @@ while IFS=$'\t' read -r name source entry_version; do
     continue
   fi
 
+  # Version is not the only field declared twice. `description` and `keywords`
+  # are what a user reads in the marketplace listing, and plugin.json wins at
+  # install time for these too — so a marketplace entry describing a feature
+  # the installed plugin.json never mentions is the same defect as a version
+  # mismatch, just harder to notice.
+  entry_description=$(jq -r --arg n "$name" '.plugins[] | select(.name==$n) | .description // ""' "$MARKETPLACE")
+  plugin_description=$(jq -r '.description // ""' "$plugin_json")
+  if [ "$entry_description" != "$plugin_description" ]; then
+    note_failure "$name" \
+      "description differs between marketplace.json and plugin.json (plugin.json wins at install time)"
+    continue
+  fi
+
+  entry_keywords=$(jq -S -c --arg n "$name" '.plugins[] | select(.name==$n) | (.keywords // []) | sort' "$MARKETPLACE")
+  plugin_keywords=$(jq -S -c '(.keywords // []) | sort' "$plugin_json")
+  if [ "$entry_keywords" != "$plugin_keywords" ]; then
+    note_failure "$name" \
+      "keywords differ: marketplace.json $entry_keywords vs plugin.json $plugin_keywords"
+    continue
+  fi
+
   # The manifest is release-please's record of the last tagged release. If either
   # file has drifted from it, a release bumped one and left the other behind.
   if [ -r "$MANIFEST" ]; then
@@ -62,9 +85,9 @@ while IFS=$'\t' read -r name source entry_version; do
 done < <(jq -r '.plugins[] | [.name, .source, (.version // "")] | @tsv' "$MARKETPLACE")
 
 if [ "$fail" -ne 0 ]; then
-  printf '\nVersions must agree across marketplace.json, plugin.json, and the release manifest.\n'
+  printf '\nVersion, description and keywords must agree across marketplace.json and plugin.json,\nand the version must match the release manifest.\n'
   printf 'release-please keeps them in sync via the extra-files entries in release-please-config.json.\n'
   exit 1
 fi
 
-printf '\nAll plugin versions agree.\n'
+printf '\nAll plugin metadata agrees.\n'
