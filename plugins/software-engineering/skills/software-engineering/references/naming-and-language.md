@@ -63,13 +63,7 @@ for chunk in chunked(items, 200):
     upstream.send(chunk)
 ```
 
-**Notes by language** — the principle is universal; apply it the way each language is idiomatic:
-- **Go:** exported identifiers should have a doc comment starting with the identifier name (`// Order represents ...`). The toolchain enforces this in some configs.
-- **Python:** docstrings are part of the runtime (`__doc__`), so they double as machine-readable API descriptions.
-- **TypeScript:** JSDoc (`/** ... */`) integrates with editor tooling for hover hints — worth writing on exported types/functions.
-- **Rust:** `///` doc comments are compiled, and the examples inside them are **run by `cargo test`**. A documented example cannot silently rot into a lie the way a prose snippet can — which makes doc examples the cheapest place to put the usage that must stay true.
-- **Kotlin:** KDoc (`/** ... */`) with `@param`/`@return`; Dokka renders it. A `//` comment restating what the next line does is the one to delete.
-- **Ruby:** YARD (`# @param`, `# @return`) is the convention. Since so much is duck-typed, the docstring is often the only statement of what a method actually accepts — which makes it load-bearing rather than decorative.
+**Notes by language** — the principle is universal; apply it the way each language is idiomatic. Load only the file for the language you are working in: `references/languages/{go,typescript,python,kotlin-java,rust,ruby}.md`.
 
 ---
 

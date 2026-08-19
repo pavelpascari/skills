@@ -113,13 +113,7 @@ def update_order(o, quantity):
 # Run the full suite. Confirm: no regressions.
 ```
 
-**Notes by language** — the principle is universal; apply it the way each language is idiomatic:
-- **Go:** prefer table-driven tests when the bug has multiple boundary conditions; one row per condition.
-- **TypeScript / Jest:** if the fix involves async behavior, use `await expect(...).rejects.toThrow(...)` — easy to get wrong.
-- **Python / pytest:** `pytest.raises` with `match=` pins the error message; useful for proving the right code path triggered. Without it, a `ValueError` raised by your own fixture satisfies the test. `@pytest.mark.parametrize` is the table-driven equivalent when the bug has several boundaries.
-- **Kotlin / JUnit 5:** `assertThrows<T> { }` *returns* the exception — assert on its message, otherwise any `T` from anywhere in the block passes. `@ParameterizedTest` with `@ValueSource` covers the boundary pair (largest rejected value, smallest accepted one) in one test.
-- **Rust:** prefer a test returning `Result<(), E>` with `?` over `unwrap()`, so a failure prints the error instead of a bare panic. If you use `#[should_panic]`, always give it `expected = "..."` — the bare form passes on *any* panic, including one from the test's own setup.
-- **Ruby / RSpec:** `expect { ... }.to raise_error(MyError, /specific message/)` — the bare `raise_error` matches every error class, and `not_to raise_error` is not an assertion about the result at all.
+**Notes by language** — the principle is universal; apply it the way each language is idiomatic. Load only the file for the language you are working in: `references/languages/{go,typescript,python,kotlin-java,rust,ruby}.md`.
 
 ---
 
@@ -147,21 +141,10 @@ only way to know an assertion binds is to make it fail on purpose.
 - A boundary guard with a rejection test but no smallest-legal-value test — `> 1` written where
   `> 0` was meant passes the first and fails only the second.
 
-**The obvious wrong change, by language** — where the permissive assertion usually hides:
-- **Go:** flip `!=` to `==` in the error check, or return the zero value instead of the computed
-  one. A test asserting only `err == nil` stays green through both.
-- **Kotlin / Java:** swap a `Duration` unit (`toSeconds()` → `toMinutes()`), or delete a `require`.
-  `isGreaterThan(0)` and `isNotNull()` survive; `isCloseTo(expected, within(...))` does not.
-- **Rust:** replace the returned value with `Default::default()`, or change `?` to
-  `.unwrap_or_default()`. A test asserting `is_ok()` stays green; one asserting the value does not.
-- **Python:** return `None` instead of the result, or widen a comparison to `>=`. A test asserting
-  a `Mock` truthily, or `assertIsNotNone`, will not notice either.
-- **Ruby:** return `nil` from the method, or change `==` to `.present?`. `be_truthy` survives both.
-- **TypeScript:** return `undefined`, or replace `toEqual` with `toMatchObject` in your head and
-  ask whether the extra fields would have been caught.
-
-If the test stays green through the language's version of the above, it is pinning that a code path
-ran — not what it produced.
+**The obvious wrong change is language-specific** — what to break, per language, is in
+`references/languages/<language>.md` under *Testing*. If a test stays green through that
+language's version of the obvious regression, it is pinning that a code path ran, not what it
+produced.
 
 ---
 

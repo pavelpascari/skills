@@ -251,11 +251,6 @@ storage/
     ordersdb.go      # Storage models with persistence-specific encoding
 ```
 
-**Notes by language** — the principle is universal; apply it the way each language is idiomatic:
-- **Go:** packages ARE the firewall — the compiler enforces them. The package is the unit of encapsulation.
-- **Java/Kotlin:** module + package-private visibility approximates Go's package boundaries. Multi-module Gradle/Maven projects can mirror the four-layer structure.
-- **TypeScript:** without real package-level visibility, lean on directory boundaries + lint rules (e.g. `eslint-plugin-boundaries`) to enforce import direction.
-- **Rust:** modules plus `pub(crate)` / `pub(super)` give visibility the compiler actually enforces, so the firewall is real rather than conventional. Workspace crates are the coarser boundary when a module is not enough.
-- **Python:** nothing is truly private, and a leading underscore is a request, not a rule. `__all__` plus import-linter (or a layered package structure with a lint rule on import direction) is what turns the convention into a check.
+**Notes by language** — the principle is universal; apply it the way each language is idiomatic. Load only the file for the language you are working in: `references/languages/{go,typescript,python,kotlin-java,rust,ruby}.md`.
 
 **Credit:** the three-firewalls / four-layer model is articulated by Bill Kennedy in *Domain-Driven, Data-Oriented Design* (ardanlabs/service wiki).

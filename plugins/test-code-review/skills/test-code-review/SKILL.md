@@ -189,42 +189,10 @@ After applying fixes, run the tests. If they fail, that's valuable information �
 
 ## Language-specific patterns
 
-### Go
-- Test functions: `func Test*(t *testing.T)`
-- Files: `*_test.go`
-- Watch for: `t.Skip()` added without justification, `t.Fatal` → `t.Error` (stops failing the test immediately), error returns not checked
+Every language has its own ways of producing a green test that proves nothing — a stub that answers
+every input, an assertion that survives the regression it was written to catch, a panic matcher
+that matches any panic.
 
-### TypeScript/JavaScript
-- Files: `*.test.ts`, `*.spec.ts`, `*.test.js`, `*.spec.js`
-- Watch for: `.skip` added to test cases, `expect` calls removed, `.toEqual` → `.toMatchObject` (allows extra fields)
-
-### Python
-- Files: `test_*.py`, `*_test.py`
-- Watch for: `@pytest.mark.skip` added, `assertEqual` → `assertIn` (less precise), exception tests removed
-- `pytest.raises(ValueError)` without `match=` passes on *any* `ValueError`, including one raised by the setup before the code under test runs. Adding `match=` is what proves the intended path failed.
-- **`assert mock.some_method()` always passes.** A `Mock`/`MagicMock` returns a truthy `Mock` for any call or attribute, so a bare-truthiness assertion on one is vacuous — and so is a typo'd attribute (`mock.reslut` invents an attribute rather than raising). `assert x.called` has the same problem: `Mock` also answers `.called_once` truthily, which is not a real API. Use `assert_called_once_with(...)`, or `spec=`/`autospec=True` so a typo raises.
-- `assertAlmostEqual(a, b)` defaults to 7 decimal places — fine for floats, far too loose when the values are seconds or money.
-- In the implementation diff, `except Exception: pass` and a bare `except:` are the silent-failure sites; a test asserting only "no exception raised" cannot tell them from success.
-
-### Kotlin/Java
-- Files: `*Test.kt`, `*Test.java`, `*Spec.kt`; JUnit 5 `@Test`, `@ParameterizedTest`
-- Watch for: `@Disabled`/`@Ignore` added, `@Test(expected = ...)` removed, Mockito `eq(x)` widened to `any()` (the stub now answers every input), `verify(mock, times(1))` → `verify(mock)` → deleted
-- **AssertJ assertions that survive real regressions:** `isNotNull()` where the value matters, `isGreaterThan(0)` on a duration or size, and `assertThatCode { }.doesNotThrowAnyException()` as a test's *only* assertion. Prefer `isCloseTo(expected, within(tolerance))` when magnitude is the point — `Duration.ofHours(12).toMinutes()` is 720, which passes `isGreaterThan(0)` while being a 60× error.
-- `runCatching { }` swallows everything, including `CancellationException` — inside a coroutine that silently breaks structured concurrency rather than propagating the cancel. A test that only checks the fallback value will not see it.
-- `assertEquals(expected, actual)` on `Double`/`Float` without a delta argument is a flaky assertion waiting to happen.
-
-### Rust
-- Files: `#[cfg(test)] mod tests` inline, `tests/*.rs` for integration
-- Watch for: `#[ignore]` added without justification, `assert!(result.is_ok())` replacing an assertion on the actual value, `assert!(matches!(x, Pattern))` loosened to a wildcard arm
-- **`#[should_panic]` without `expected = "..."` passes on any panic at all** — including an `unwrap()` in the test's own setup, or a panic from a completely unrelated bug. It is the single easiest way to have a green test that proves nothing.
-- `let _ = fallible();` discards a `Result` and silences the `must_use` warning. In an implementation diff that is a deliberate-looking silent failure; check whether a test forces that path.
-- `unwrap()`/`expect()` in the code under test *are* the error paths — a test that only exercises the happy path leaves them entirely unproven, and they abort the process rather than returning.
-- Prefer tests returning `Result<(), E>` and using `?` over `unwrap()` — a failure then reports the error rather than a bare panic line.
-
-### Ruby
-- Files: `*_spec.rb` (RSpec), `*_test.rb` (Minitest)
-- Watch for: `xit`/`xdescribe`/`skip`/`pending` added, `eq` weakened to `be_truthy`, `let!` changed to `let` (setup that used to run eagerly is now lazy and may never run)
-- **`expect { }.not_to raise_error` as a test's only assertion** proves nothing about the result — and RSpec deliberately forbids the argument form (`not_to raise_error(SomeError)`) because it passes when a *different* error is raised.
-- `allow(x).to receive(:y).and_return(z)` with no `with(...)` constraint answers `z` for every input, so a test can pass against an implementation that passes the wrong arguments entirely.
-- In the implementation diff, `rescue nil` and a bare `rescue` (which catches `StandardError`) are the silent-failure sites. `rescue Exception` is worse — it catches `Interrupt` and `SignalException` too.
-- `be_truthy` passes for `0` and `""`; `be true` is the strict check.
+**Read only the file matching the diff's language** (both, if it spans two):
+`references/languages/{go,typescript,python,kotlin-java,rust,ruby}.md`. For a language with no file,
+apply the general steps above and say in the review that no language-specific pass was available.
