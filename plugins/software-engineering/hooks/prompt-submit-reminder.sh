@@ -33,6 +33,6 @@ Definition-of-Done — keep these in mind while implementing:
 - PR description tells the reviewer what, why, and how to verify
 - Commits curated into a reviewable story
 - Docs / runbooks updated if behavior or contracts changed
-- Anything noticed and ruled out of scope is recorded in docs/deferred-review-flags.md"
+- A review step's own written judgement to defer something — not what someone privately noticed — is recorded in docs/deferred-review-flags.md"
 
 echo "$message" | jq -Rs '{systemMessage: .}'

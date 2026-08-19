@@ -44,8 +44,9 @@ The corollary matters as much as the rule: **the sweep runs identically on a 5-l
 that scales with how important a change feels is precisely why the small ones leak.
 
 **How to apply:**
-- When any review step defers something, append it to `docs/deferred-review-flags.md` with the
-  file, line, and what was noticed. Gitignore the file; it is a working document.
+- When a review step's own output records a judgement to defer something — not what someone
+  privately noticed — append it to `docs/deferred-review-flags.md` with the file, line, and what
+  was noticed. Gitignore the file; it is a working document.
 - Run the sweep before `gh pr create`, `gh pr ready`, or adding a reviewer.
 - Let the analytical passes run blind. A reviewer who knows why the code was written that way will
   accept the reason — that is the bias the whole design exists to remove.

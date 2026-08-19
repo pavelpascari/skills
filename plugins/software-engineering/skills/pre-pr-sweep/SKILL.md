@@ -26,6 +26,16 @@ The deferral ledger is a convenience, not the input. An empty ledger means "noth
 forward" — never "nothing to check". A sweep that only checks what an earlier stage chose to hand
 it has rebuilt the exact gap it exists to close.
 
+**Re-derivation's coverage is real but partial — say so plainly.** Passes 2, 3, and 5 re-derive
+three specific classes straight from the diff: failure modes, new config guards, and in-diff
+duplication. That is genuine independence from the ledger for those three classes, and an empty
+ledger does not weaken it. But a deferred finding outside those three classes — a misleading name,
+a leaky abstraction, an unvalidated string field, a perf concern — has no re-deriving pass behind
+it. The ledger is its only carrier, and the ledger is a convenience, not a guarantee: if nothing
+wrote it down, it is gone. Do not let the re-derivation rule above be read as "the sweep catches
+everything regardless of the ledger" — it catches those three classes regardless of the ledger,
+and nothing else.
+
 **2. This runs identically on a 5-line PR and a 500-line PR.** Rigor that scales with how
 important a change feels is why the small ones leak. There is no "this is too small to sweep".
 
@@ -284,6 +294,9 @@ discarded. A pass that systematically over-flags should be visible, not invisibl
 
 **A pass that returns nothing** is reported as "pass N did not complete" — never silently treated
 as "no findings". A silent empty pass is the failure mode this skill exists to eliminate.
+**An incomplete pass forces the verdict to `Not ready`.** Reporting "pass N did not complete" and
+still returning `Ready for review` is the exact silent-empty failure this design exists to close —
+a dead pass is a blocking finding in its own right, not a pass with nothing to say.
 
 **Reconcile the ledger after, never before.** A blind agent will re-flag something already marked
 `ACCEPTED`. That is correct behaviour. Handing it the ledger up front to prevent the duplicate
@@ -297,12 +310,18 @@ which is also how an acceptance that has quietly gone stale becomes visible.
 
 ## Finishing
 
+Determine the verdict first: **`Ready for review`** — every pass completed and produced no
+blocking findings — or **`Not ready`** plus the blocking findings. Each finding carries
+`file:line`, the failure scenario, and a proposed fix.
+
+**Only a `Ready for review` verdict writes the marker.** A `Not ready` sweep must not write it —
+writing it would silence the tripwire on a HEAD that has not actually passed, and `gh pr create`
+would proceed without a word on the very commit the sweep just rejected. If the verdict is
+`Not ready`, stop here; report the findings and skip the block below.
+
 Record the sweep so the tripwire stays quiet until the next commit:
 
 ```bash
 mkdir -p "$(git rev-parse --git-dir)/software-engineering"
 git rev-parse HEAD > "$(git rev-parse --git-dir)/software-engineering/last-sweep"
 ```
-
-Then report: **`Ready for review`**, or **`Not ready`** plus the blocking findings. Each finding
-carries `file:line`, the failure scenario, and a proposed fix.

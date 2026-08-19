@@ -155,3 +155,85 @@ else
   fail "sweep skill: an inapplicable template section is marked N/A, never deleted" \
     "the 'N/A — <reason>' rule is missing"
 fi
+
+# --- finding 2: the marker write is gated on a Ready for review verdict ---
+# The old '## Finishing' wrote the marker unconditionally, before the verdict was even
+# decided, so a Not ready sweep silenced the tripwire on that HEAD anyway.
+if grep -q 'Only a `Ready for review` verdict writes the marker' "$SWEEP"; then
+  pass "sweep skill: the marker write is gated on a Ready for review verdict"
+else
+  fail "sweep skill: the marker write is gated on a Ready for review verdict" \
+    "the 'Only a \`Ready for review\` verdict writes the marker' sentence is missing"
+fi
+
+if grep -q 'A `Not ready` sweep must not write it' "$SWEEP"; then
+  pass "sweep skill: a Not ready sweep is explicitly forbidden from writing the marker"
+else
+  fail "sweep skill: a Not ready sweep is explicitly forbidden from writing the marker" \
+    "the 'A \`Not ready\` sweep must not write it' sentence is missing"
+fi
+
+# --- finding 3: an incomplete pass forces Not ready ---
+# Without this, "pass N did not complete" could still be paired with a clean
+# Ready for review verdict — the exact silent-empty failure this skill exists to close.
+if grep -q 'An incomplete pass forces the verdict to `Not ready`' "$SWEEP"; then
+  pass "sweep skill: an incomplete pass forces the verdict to Not ready"
+else
+  fail "sweep skill: an incomplete pass forces the verdict to Not ready" \
+    "the 'An incomplete pass forces the verdict to \`Not ready\`' sentence is missing"
+fi
+
+# --- finding 5: re-derivation's coverage is explicitly partial ---
+# Pass 2 only re-derives failure modes, config guards, and in-diff duplication — not every
+# possible finding class. Without this, a reader could infer the ledger is redundant for
+# everything, when a misleading name, leaky abstraction, unvalidated string field, or perf
+# concern has no re-deriving pass and depends entirely on the ledger.
+if grep -q 'has no re-deriving pass behind' "$SWEEP"; then
+  pass "sweep skill: the limits of re-derivation coverage are stated plainly"
+else
+  fail "sweep skill: the limits of re-derivation coverage are stated plainly" \
+    "the 'has no re-deriving pass behind' sentence is missing"
+fi
+
+# --- finding 4: the ledger trigger is stated identically in all three places ---
+# Rule 5 in software-engineering/SKILL.md is deliberately narrowed to fire on a review
+# step's OWN WRITTEN OUTPUT, never on what someone privately noticed. prompt-submit-reminder.sh
+# and process-and-review.md must use the same formulation, not a looser one ("anything
+# noticed") or a different one ("when any review step defers something").
+SE_SKILL="$SKILLS_DIR/software-engineering/SKILL.md"
+PROCESS_REF="$SKILLS_DIR/software-engineering/references/process-and-review.md"
+PROMPT_HOOK="$HOOKS_DIR/prompt-submit-reminder.sh"
+
+for pair in "$SE_SKILL:software-engineering/SKILL.md rule 5" \
+            "$PROCESS_REF:process-and-review.md" \
+            "$PROMPT_HOOK:prompt-submit-reminder.sh"; do
+  f="${pair%%:*}"
+  label="${pair#*:}"
+  # Markdown prose wraps; normalize newlines to spaces so a phrase split across a
+  # line-wrap still matches instead of producing a false "missing" failure.
+  if tr -s ' \n\t' ' ' < "$f" | grep -q 'someone privately noticed'; then
+    pass "ledger trigger: $label uses the written-output formulation"
+  else
+    fail "ledger trigger: $label uses the written-output formulation" \
+      "'someone privately noticed' is missing from $f"
+  fi
+done
+
+# --- finding 4: "best-effort" is renamed away from the ledger's description ---
+# "best-effort" is the established error-handling term (references/errors.md: a binding
+# contract requiring a catch). Rule 5 used it a second, contradictory way — "may be
+# incomplete, nothing enforces it" — for the ledger. Pin that the ledger's own description
+# no longer uses that word, so the two senses can't be confused again.
+if tr -s ' \n\t' ' ' < "$SE_SKILL" | grep -q 'ledger is a convenience, not the guarantee'; then
+  pass "ledger term: rule 5 describes the ledger as a convenience, not 'best-effort'"
+else
+  fail "ledger term: rule 5 describes the ledger as a convenience, not 'best-effort'" \
+    "'ledger is a convenience, not the guarantee' is missing from $SE_SKILL"
+fi
+
+if grep -q 'ledger is best-effort' "$SE_SKILL"; then
+  fail "ledger term: rule 5 no longer calls the ledger 'best-effort'" \
+    "'ledger is best-effort' is still present in $SE_SKILL"
+else
+  pass "ledger term: rule 5 no longer calls the ledger 'best-effort'"
+fi

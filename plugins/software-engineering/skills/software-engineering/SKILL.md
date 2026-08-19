@@ -28,9 +28,9 @@ These apply always. If you find yourself about to violate one, stop and reconsid
 5. **A written deferral goes on the ledger.** When a review step's own output records a judgement —
    "out of scope", "not blocking", "worth flagging but inherited" — append it to
    `docs/deferred-review-flags.md` before moving on; the rule is checkable against that written
-   judgement, not against what someone privately noticed. The ledger is best-effort, not the
-   guarantee — the pre-review sweep's failure-mode pass re-derives from the diff every time, and
-   that is what actually guarantees coverage. See `references/process-and-review.md`.
+   judgement, not against what someone privately noticed. The ledger is a convenience, not the
+   guarantee — the pre-review sweep's failure-mode pass re-derives from the diff every time,
+   and that is what actually guarantees coverage. See `references/process-and-review.md`.
 
 ## Code design
 
