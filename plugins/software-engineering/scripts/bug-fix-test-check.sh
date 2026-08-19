@@ -26,9 +26,22 @@ if ! echo "$command" | grep -Eq '(^|[[:space:];&|])git[[:space:]]+commit($|[[:sp
 fi
 
 # Extract the commit message: prefer the -m argument; otherwise, fall back to .git/COMMIT_EDITMSG.
-message=$(echo "$command" | grep -oE -- '-m[[:space:]]+("[^"]*"|'"'"'[^'"'"']*'"'"'|[^[:space:]]+)' | sed -E 's/^-m[[:space:]]+//; s/^["'"'"']//; s/["'"'"']$//' | head -1)
+#
+# `grep -oE` legitimately finds no match on any commit with no `-m` (`git
+# commit`, `--amend`, `-a`, ...) and exits 1. Under `pipefail` that failure
+# is the whole pipeline's exit status even though `sed`/`head` downstream
+# both succeed on the resulting empty input, so a bare assignment here would
+# abort the script under `set -e` — on ordinary commits, not just malformed
+# input — before ever reaching the COMMIT_EDITMSG fallback below. `|| true`
+# on the pipeline lets a "no match" resolve to an empty $message instead,
+# matching the `staged=$(git diff --cached ... || true)` guard later in this
+# script.
+message=$(echo "$command" | grep -oE -- '-m[[:space:]]+("[^"]*"|'"'"'[^'"'"']*'"'"'|[^[:space:]]+)' | sed -E 's/^-m[[:space:]]+//; s/^["'"'"']//; s/["'"'"']$//' | head -1 || true)
 if [ -z "$message" ] && [ -r .git/COMMIT_EDITMSG ]; then
-  message=$(head -1 .git/COMMIT_EDITMSG)
+  # Guarded for the same reason, even though a file already passed `-r` is
+  # very unlikely to fail to read: keep every command that reads external
+  # state on a legitimately-fallible path guarded the same way.
+  message=$(head -1 .git/COMMIT_EDITMSG 2>/dev/null || true)
 fi
 
 if [ -z "$message" ]; then
