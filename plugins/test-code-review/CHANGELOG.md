@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.2.0](https://github.com/pavelpascari/skills/compare/test-code-review-v1.1.0...test-code-review-v1.2.0) (2026-08-19)
+
+
+### Features
+
+* **software-engineering:** add pre-pr-sweep, the stage between done and reviewed ([#13](https://github.com/pavelpascari/skills/issues/13)) ([0065a8b](https://github.com/pavelpascari/skills/commit/0065a8b6a746f2964b3cbb6453bd598b0ac92f09))
+
+
+### Bug Fixes
+
+* **ci:** keep plugin.json versions in sync with the marketplace and manifest ([#14](https://github.com/pavelpascari/skills/issues/14)) ([9ba87e6](https://github.com/pavelpascari/skills/commit/9ba87e6a5e08fd2cb6a57394215c1d0b31acb8bb))
+
 ## [1.1.0](https://github.com/pavelpascari/skills/compare/test-code-review-v1.0.0...test-code-review-v1.1.0) (2026-05-24)
 
 
