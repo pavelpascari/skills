@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.3.1](https://github.com/pavelpascari/skills/compare/software-engineering-v1.3.0...software-engineering-v1.3.1) (2026-08-19)
+
+
+### Bug Fixes
+
+* close three follow-ups from the pre-pr-sweep review ([#16](https://github.com/pavelpascari/skills/issues/16)) ([f70aa3e](https://github.com/pavelpascari/skills/commit/f70aa3ee12ecd54138a1da11b3836d23c514f9f2))
+
+
+### Documentation
+
+* add Kotlin/Java, Rust and Ruby examples, deepen Python ([#18](https://github.com/pavelpascari/skills/issues/18)) ([c9a09d8](https://github.com/pavelpascari/skills/commit/c9a09d8394eac0f9f358204389c27c33ed9799e1))
+
 ## [1.3.0](https://github.com/pavelpascari/skills/compare/software-engineering-v1.2.0...software-engineering-v1.3.0) (2026-08-19)
 
 
