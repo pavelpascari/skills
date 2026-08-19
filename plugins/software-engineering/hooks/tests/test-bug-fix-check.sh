@@ -48,14 +48,16 @@ rm -rf "$REPO"
 # `pipefail` that failure is the pipeline's exit status even though `sed` and
 # `head` downstream both succeed on the empty input. A bare
 # `message=$(... | ... | ...)` assignment then aborts the whole script under
-# `set -e` with that exit 1 — before ever reaching the `.git/COMMIT_EDITMSG`
-# fallback a few lines below, which exists specifically to handle this case.
-# This fires on ordinary `git commit`, `git commit --amend`, and
-# `git commit -a` — not just malformed input.
+# `set -e` with that exit 1 — before reaching any later matching or the
+# empty-message exit. This fires on ordinary `git commit`, `git commit --amend`,
+# and `git commit -a` — not just malformed input.
+# (These cases predate the removal of the .git/COMMIT_EDITMSG fallback; they now
+# pass because no message flag is present at all, not because a fallback was
+# consulted and came back empty.)
 
-# Bare `git commit`, no COMMIT_EDITMSG on disk at all: the message stays
-# empty end to end (no `-m`, no fallback file), and the script must still
-# reach `exit 0` rather than dying on the `grep -oE` no-match.
+# Bare `git commit`: no message flag, so the message stays empty end to end and
+# the script must still reach `exit 0` rather than dying on the `grep -oE`
+# no-match. COMMIT_EDITMSG is removed here only to show it plays no part.
 REPO="$(make_repo)"
 rm -f "$REPO/.git/COMMIT_EDITMSG"
 assert_silent "bug-fix: bare 'git commit' with no -m and no COMMIT_EDITMSG does not abort" \
@@ -222,4 +224,17 @@ assert_silent "bug-fix: a stale COMMIT_EDITMSG does not trigger a warning" \
   "$REPO" "$SCRIPT" "$(bash_json "git commit")"
 assert_silent "bug-fix: a stale COMMIT_EDITMSG does not trigger on --amend either" \
   "$REPO" "$SCRIPT" "$(bash_json "git commit --amend")"
+rm -rf "$REPO"
+
+# Git accepts `--message` with a space before its value, exactly like `-m`.
+# Matching only the `=` form left the space form silently unmatched.
+REPO="$(make_repo)"
+printf 'x\n' > "$REPO/handler.go"
+git -C "$REPO" add handler.go
+assert_contains "bug-fix: --message with a space before its value is recognised" \
+  "$REPO" "$SCRIPT" "$(bash_json "git commit --message 'fix: nil pointer'")" \
+  "no test changes"
+assert_contains "bug-fix: --message with a double-quoted spaced value is recognised" \
+  "$REPO" "$SCRIPT" "$(bash_json "git commit --message \"fix: nil pointer\"")" \
+  "no test changes"
 rm -rf "$REPO"
