@@ -72,13 +72,34 @@ else
   stripped="${awk_out%$'\n'*}"
 fi
 
+# grep is line-based and `.` cannot span newlines, so a shell line-continuation —
+# `gh pr edit 5 \` followed by `  --add-reviewer x` on the next line — would otherwise
+# never match either pattern below even though it is one logical command. Join
+# backslash-continued lines into a single line first (dropping the trailing `\`, keeping
+# a space so tokens don't fuse) before matching. Like the heredoc-stripper above, this
+# reads all of $stripped via a single awk pass with no early exit, so it is safe against
+# SIGPIPE regardless of input size.
+joined=$(printf '%s\n' "$stripped" | awk '
+  {
+    line = (buf != "") ? buf $0 : $0
+    if (line ~ /\\$/) {
+      sub(/\\$/, " ", line)
+      buf = line
+    } else {
+      print line
+      buf = ""
+    }
+  }
+  END { if (buf != "") print buf }
+')
+
 # Exactly three invocations mean "a human is about to be asked to review".
 # `gh pr list`, `gh pr view`, and `gh pr edit --title` must not match.
 # Here-strings (`<<<`), not pipes, so a match on line one can never SIGPIPE
-# a still-writing producer regardless of how large $stripped is.
-if grep -Eq '(^|[[:space:];&|(])gh[[:space:]]+pr[[:space:]]+(create|ready)($|[[:space:]])' <<<"$stripped"; then
+# a still-writing producer regardless of how large $joined is.
+if grep -Eq '(^|[[:space:];&|(])gh[[:space:]]+pr[[:space:]]+(create|ready)($|[[:space:]])' <<<"$joined"; then
   :
-elif grep -Eq '(^|[[:space:];&|(])gh[[:space:]]+pr[[:space:]]+edit([[:space:]].*)?--add-reviewer' <<<"$stripped"; then
+elif grep -Eq '(^|[[:space:];&|(])gh[[:space:]]+pr[[:space:]]+edit([[:space:]].*)?--add-reviewer' <<<"$joined"; then
   :
 else
   exit 0

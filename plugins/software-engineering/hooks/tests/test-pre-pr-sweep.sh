@@ -34,6 +34,15 @@ assert_contains "sweep: gh pr edit --add-reviewer warns" \
   "$REPO" "$SCRIPT" "$(bash_json "gh pr edit 5 --add-reviewer chrizzlekicks")" \
   "pre-pr-sweep has not run"
 
+# --- regression: line-continued --add-reviewer must still arm the tripwire (finding 6) ---
+# grep is line-based and `.` cannot span newlines, so `gh pr edit 5 \` followed by
+# `  --add-reviewer x` on the next line (an ordinary shell line-continuation) previously
+# fell through the --add-reviewer pattern silently.
+CONTINUATION_CMD=$'gh pr edit 5 \\\n  --add-reviewer chrizzlekicks'
+assert_contains "sweep: line-continued --add-reviewer still warns" \
+  "$REPO" "$SCRIPT" "$(bash_json "$CONTINUATION_CMD")" \
+  "pre-pr-sweep has not run"
+
 assert_contains "sweep: gh pr create after && on a later line warns" \
   "$REPO" "$SCRIPT" "$(bash_json "git push -u origin HEAD &&
 gh pr create --fill")" \
@@ -82,6 +91,17 @@ assert_contains "sweep: large command matching on line 1 does not SIGPIPE" \
 assert_contains "sweep: no marker reports 'never'" \
   "$REPO" "$SCRIPT" "$(bash_json "gh pr create --fill")" \
   "swept: never"
+
+# --- output-format contract: stdout must be JSON with a systemMessage key (finding 1) ---
+# hooks.json wires this script's stdout straight into Claude Code's hook protocol, which
+# expects `{"systemMessage": "..."}` — a plain-text or malformed stdout is silently dropped
+# by the harness rather than shown to the agent. Nothing in the suite asserted this shape.
+out="$(run_hook_in "$REPO" "$SCRIPT" "$(bash_json "gh pr create --fill")")"
+if printf '%s' "$out" | jq -e 'type == "object" and has("systemMessage")' >/dev/null 2>&1; then
+  pass "sweep: stdout is JSON with a systemMessage key"
+else
+  fail "sweep: stdout is JSON with a systemMessage key" "got: $out"
+fi
 
 # With no ledger file at all, the message must still render — just without a list.
 # Paired with assert_contains below (review finding 3): a script that crashed
