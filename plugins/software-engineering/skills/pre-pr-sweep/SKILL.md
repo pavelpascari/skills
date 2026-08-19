@@ -148,8 +148,17 @@ move.
 - ✗ the task brief, plan, spec, or ticket text
 - ✗ the PR description or the author's stated intent
 - ✗ any prior review's conclusions — sub-agents **MUST NOT read the ledger**
-- ✗ other passes' findings; the lenses stay independent
+- ✗ other passes' findings; the lenses stay independent — except pass 4, which receives pass 2's
+  failure list by design (the one permitted cross-pass flow, explained below)
 - ✓ the repo path, the diff command, and its own pass brief
+
+**The one exception.** Pass 4 receives pass 2's failure list, and only pass 2's failure list — not
+as rationale, but as a work list of facts derived from the same diff, because pass 4's job is
+checking test coverage *against* enumerated failure modes rather than hunting blind. The bias the
+blinding exists to prevent is the *author's* rationale, which lets a reviewer accept a
+justification instead of judging the code in front of it; a sibling pass's enumerated findings are
+not rationale, so this flow does not reintroduce that bias. No other pass receives another pass's
+output — this is the only permitted cross-pass flow.
 
 **Prompt template:**
 

@@ -47,3 +47,31 @@ if grep -q 'runs identically on a 5-line PR' "$SWEEP"; then
 else
   fail "sweep skill: size-independence is stated" "the size-independence rule is missing"
 fi
+
+# The global "don't just check what was handed forward" constraint — the substance of
+# rule 1, not just its heading, so trimming the explanation still fails this.
+if grep -q 'never "nothing to check"' "$SWEEP"; then
+  pass "sweep skill: an empty ledger does not mean nothing to check"
+else
+  fail "sweep skill: an empty ledger does not mean nothing to check" \
+    "the 'never \"nothing to check\"' sentence is missing from the Two rules section"
+fi
+
+# Re-derive, never inherit: pass 2 must re-enumerate from the diff every time, not
+# just whatever an earlier stage handed it.
+if grep -q 'enumerates failure modes from the diff every single time' "$SWEEP"; then
+  pass "sweep skill: pass 2 re-derives failure modes instead of inheriting them"
+else
+  fail "sweep skill: pass 2 re-derives failure modes instead of inheriting them" \
+    "the 're-derive, never inherit' sentence is missing from the Two rules section"
+fi
+
+# The pass-4 carve-out is the one permitted exception to sub-agent independence —
+# pin the reasoning, not just the bullet, so a later edit can't silently widen or
+# drop the exception.
+if grep -q 'work list of facts derived from the same diff' "$SWEEP"; then
+  pass "sweep skill: the pass-4 findings carve-out is explained, not just asserted"
+else
+  fail "sweep skill: the pass-4 findings carve-out is explained, not just asserted" \
+    "the 'work list of facts derived from the same diff' sentence is missing"
+fi
