@@ -45,11 +45,51 @@ some body
 EOF")" \
   "pre-pr-sweep has not run"
 
+# --- regression: awk heredoc-stripper edge cases (review finding 2) ---
+# A `<<-EOF` closed by a tab-indented terminator (the entire point of `<<-`)
+# must still terminate the heredoc, not swallow the real command that follows.
+TAB_HEREDOC_CMD=$'cat <<-EOF\nmentions gh pr create in the body only\n\tEOF\ngh pr create --fill'
+assert_contains "sweep: dash-heredoc with tab-indented terminator still warns" \
+  "$REPO" "$SCRIPT" "$(bash_json "$TAB_HEREDOC_CMD")" \
+  "pre-pr-sweep has not run"
+
+# A closing delimiter with trailing whitespace must still terminate the
+# heredoc rather than swallowing every line after it forever.
+TRAILING_WS_HEREDOC_CMD=$'cat <<EOF\nmentions gh pr create in the body only\nEOF \ngh pr create --fill'
+assert_contains "sweep: heredoc terminator with trailing whitespace still warns" \
+  "$REPO" "$SCRIPT" "$(bash_json "$TRAILING_WS_HEREDOC_CMD")" \
+  "pre-pr-sweep has not run"
+
+# A `<<` used as a shift/append/comparison inside quoted text is not a real
+# heredoc opener; it never finds a closing line matching its phantom
+# delimiter, so parsing runs to EOF still "skipping". The safety-net must
+# fall back to the ORIGINAL command rather than silently dropping the rest.
+PHANTOM_HEREDOC_CMD=$'echo "a << b"\ngh pr create --fill'
+assert_contains "sweep: text containing << does not swallow the real command" \
+  "$REPO" "$SCRIPT" "$(bash_json "$PHANTOM_HEREDOC_CMD")" \
+  "pre-pr-sweep has not run"
+
+# --- regression: SIGPIPE under set -o pipefail on large input (review finding 1) ---
+# A large command matching on line 1 must not SIGPIPE a `grep -Eq` pipeline
+# that exits early once it has its match.
+LARGE_PADDING="$(head -c 100000 /dev/zero | tr '\0' 'x')"
+LARGE_CMD="gh pr create --fill
+# ${LARGE_PADDING}"
+assert_contains "sweep: large command matching on line 1 does not SIGPIPE" \
+  "$REPO" "$SCRIPT" "$(bash_json "$LARGE_CMD")" \
+  "pre-pr-sweep has not run"
+
 assert_contains "sweep: no marker reports 'never'" \
   "$REPO" "$SCRIPT" "$(bash_json "gh pr create --fill")" \
   "swept: never"
 
 # With no ledger file at all, the message must still render — just without a list.
+# Paired with assert_contains below (review finding 3): a script that crashed
+# with empty stdout would also lack "open deferral" and pass the case below
+# vacuously, so we also require proof the warning itself still renders.
+assert_contains "sweep: absent ledger still warns" \
+  "$REPO" "$SCRIPT" "$(bash_json "gh pr create --fill")" \
+  "pre-pr-sweep has not run"
 out="$(run_hook_in "$REPO" "$SCRIPT" "$(bash_json "gh pr create --fill")")"
 case "$out" in
   *"open deferral"*) fail "sweep: absent ledger lists no deferrals" "got: $out" ;;
@@ -76,6 +116,17 @@ assert_contains "sweep: stale marker counts commits since" \
   "(1 commits since)"
 rm -rf "$REPO"
 
+# --- regression: a CRLF-saved marker must not permanently nag (review finding 4) ---
+# `head -1` stops at \n but does not strip a preceding \r, so a marker saved
+# with CRLF line endings compares "<sha>\r" against a bare "<sha>" and never
+# matches, even when it names the current HEAD.
+REPO="$(make_repo)"
+mkdir -p "$REPO/.git/software-engineering"
+printf '%s\r\n' "$(git -C "$REPO" rev-parse HEAD)" > "$REPO/.git/software-engineering/last-sweep"
+assert_silent "sweep: CRLF marker matching HEAD is silent" \
+  "$REPO" "$SCRIPT" "$(bash_json "gh pr create --fill")"
+rm -rf "$REPO"
+
 # --- ledger states ---
 REPO="$(make_repo)"
 mkdir -p "$REPO/docs"
@@ -98,12 +149,44 @@ assert_contains "sweep: the second open deferral is named too" \
   "pendingReclaimAfterMs has no guard"
 rm -rf "$REPO"
 
+# --- regression: a large ledger must not SIGPIPE (review finding 1) ---
+# `head -5` exits as soon as it has its 5 lines; on a ledger whose open
+# entries exceed the pipe buffer (64 KiB), that early exit SIGPIPEs the
+# still-writing printf upstream, which under `pipefail` + `set -e` kills the
+# whole script with empty stdout — silence from exactly the repo with the
+# most deferrals to report. Entries are generated here, not committed as a
+# fixture file.
+REPO="$(make_repo)"
+mkdir -p "$REPO/docs"
+{
+  i=1
+  while [ "$i" -le 2000 ]; do
+    printf -- '- [ ] 2026-08-19 `File%04d.kt:%d` deferred item number %04d with padding text to bulk up the line length\n' "$i" "$i" "$i"
+    i=$((i + 1))
+  done
+} > "$REPO/docs/deferred-review-flags.md"
+LEDGER_BYTES=$(wc -c < "$REPO/docs/deferred-review-flags.md" | tr -d ' ')
+if [ "$LEDGER_BYTES" -le 65536 ]; then
+  fail "sweep: large-ledger fixture exceeds the pipe buffer" "got only $LEDGER_BYTES bytes"
+else
+  pass "sweep: large-ledger fixture exceeds the pipe buffer"
+fi
+assert_contains "sweep: large ledger does not SIGPIPE" \
+  "$REPO" "$SCRIPT" "$(bash_json "gh pr create --fill")" \
+  "pre-pr-sweep has not run"
+rm -rf "$REPO"
+
 # A ledger with only closed entries produces no deferral list.
 REPO="$(make_repo)"
 mkdir -p "$REPO/docs"
 cat > "$REPO/docs/deferred-review-flags.md" <<'LEDGER'
 - [x] 2026-08-18 all done — ACCEPTED not worth it
 LEDGER
+# Paired with assert_contains below (review finding 3) for the same reason
+# as the absent-ledger case above.
+assert_contains "sweep: closed-only ledger still warns" \
+  "$REPO" "$SCRIPT" "$(bash_json "gh pr create --fill")" \
+  "pre-pr-sweep has not run"
 out="$(run_hook_in "$REPO" "$SCRIPT" "$(bash_json "gh pr create --fill")")"
 case "$out" in
   *"open deferral"*) fail "sweep: closed-only ledger lists no deferrals" "got: $out" ;;
