@@ -113,10 +113,7 @@ def update_order(o, quantity):
 # Run the full suite. Confirm: no regressions.
 ```
 
-**Notes by language** — the principle is universal; apply it the way each language is idiomatic:
-- **Go:** prefer table-driven tests when the bug has multiple boundary conditions; one row per condition.
-- **TypeScript / Jest:** if the fix involves async behavior, use `await expect(...).rejects.toThrow(...)` — easy to get wrong.
-- **Python / pytest:** `pytest.raises` with `match=` pins the error message; useful for proving the right code path triggered.
+**Notes by language** — the principle is universal; apply it the way each language is idiomatic. Load only the file for the language you are working in: `references/languages/{go,typescript,python,kotlin-java,rust,ruby}.md`.
 
 ---
 
@@ -143,6 +140,11 @@ only way to know an assertion binds is to make it fail on purpose.
 - "The test passes" offered as evidence a fix works, with no red state ever observed.
 - A boundary guard with a rejection test but no smallest-legal-value test — `> 1` written where
   `> 0` was meant passes the first and fails only the second.
+
+**The obvious wrong change is language-specific** — what to break, per language, is in
+`references/languages/<language>.md` under *Testing*. If a test stays green through that
+language's version of the obvious regression, it is pinning that a code path ran, not what it
+produced.
 
 ---
 

@@ -189,15 +189,10 @@ After applying fixes, run the tests. If they fail, that's valuable information �
 
 ## Language-specific patterns
 
-### Go
-- Test functions: `func Test*(t *testing.T)`
-- Files: `*_test.go`
-- Watch for: `t.Skip()` added without justification, `t.Fatal` → `t.Error` (stops failing the test immediately), error returns not checked
+Every language has its own ways of producing a green test that proves nothing — a stub that answers
+every input, an assertion that survives the regression it was written to catch, a panic matcher
+that matches any panic.
 
-### TypeScript/JavaScript
-- Files: `*.test.ts`, `*.spec.ts`, `*.test.js`, `*.spec.js`
-- Watch for: `.skip` added to test cases, `expect` calls removed, `.toEqual` → `.toMatchObject` (allows extra fields)
-
-### Python
-- Files: `test_*.py`, `*_test.py`
-- Watch for: `@pytest.mark.skip` added, `assertEqual` → `assertIn` (less precise), exception tests removed
+**Read only the file matching the diff's language** (both, if it spans two):
+`references/languages/{go,typescript,python,kotlin-java,rust,ruby}.md`. For a language with no file,
+apply the general steps above and say in the review that no language-specific pass was available.

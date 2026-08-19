@@ -21,6 +21,12 @@ jobs:
       - name: Check plugin metadata is in sync
         run: bash scripts/check-plugin-sync.sh
 
+      # Skills point at `references/...` files loaded on demand. A renamed or
+      # deleted one breaks silently: the skill still loads, the pointer leads
+      # nowhere, and the guidance is simply absent.
+      - name: Check reference pointers resolve
+        run: bash scripts/check-references.sh
+
       - name: Validate marketplace
         run: claude plugin validate .
 
