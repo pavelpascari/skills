@@ -176,9 +176,14 @@ author already checked. Fix that with four parts:
    *Decisions* principle already requires: "I picked X over Y because Z; happy to flip."
 
 **Hints point toward risk, never away from it.** A description that tells a reviewer which files
-are boring is a laundering mechanism, and worse than no hints at all. Three constraints:
+are boring is a laundering mechanism, and worse than no hints at all. The test is the **effect**,
+not the wording: any phrasing whose effect is to lower the reviewer's attention on a hunk is
+forbidden, whatever words it uses. Three constraints:
 
-- No "you can skip", "this part is mechanical", or "no need to look at" phrasing.
+- No wording that lowers attention on a hunk. "You can skip", "this part is mechanical", and "no
+  need to look at" are examples of the pattern — **not an exhaustive list**. "Low signal",
+  "boilerplate", or any other phrasing with the same effect is equally forbidden, however it is
+  worded; satisfying the three quoted phrases proves nothing on its own.
 - The risk list **may not be empty**. If no hunk in the change can be named as the risky one, that
   is a finding — not a clean bill of health.
 - The risk list is **not authored freehand**. Derive it from passes 2–5's findings, *including the

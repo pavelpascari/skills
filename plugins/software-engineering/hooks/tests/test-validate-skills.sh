@@ -92,10 +92,32 @@ else
     "the non-empty risk-list rule is missing"
 fi
 
+# The three quoted phrases are examples of the laundering pattern, not the whole
+# specification — an agent that only avoids those three strings while writing an
+# equivalent-effect phrase must not be able to call itself compliant. Pin the
+# non-exhaustive framing so it can't quietly collapse back into a closed list.
+if grep -q 'not an exhaustive list' "$SWEEP"; then
+  pass "sweep skill: the anti-laundering phrase list is explicitly non-exhaustive"
+else
+  fail "sweep skill: the anti-laundering phrase list is explicitly non-exhaustive" \
+    "the 'not an exhaustive list' framing is missing"
+fi
+
 if grep -q '## How to review' "$SWEEP"; then
   pass "sweep skill: the How to review section is specified"
 else
   fail "sweep skill: the How to review section is specified" "no '## How to review' in $SWEEP"
+fi
+
+# The '## How to review' grep above only pins a label, not substance — it would
+# survive deletion of the section's actual requirements. Pin one of the four
+# required parts directly: the what-was-NOT-verified pairing is the one most
+# likely to get silently dropped, since it isn't the "obvious" half of the pair.
+if grep -q 'what was not verified' "$SWEEP"; then
+  pass "sweep skill: the How to review section requires stating what was not verified"
+else
+  fail "sweep skill: the How to review section requires stating what was not verified" \
+    "the 'what was not verified' requirement is missing"
 fi
 
 # A repo's own PR template is a team convention and outranks our default shape.
@@ -104,4 +126,23 @@ if grep -q 'pull_request_template' "$SWEEP"; then
 else
   fail "sweep skill: an existing PR template takes precedence" \
     "the skill does not look for a repo PR template"
+fi
+
+# The 'pull_request_template' grep above only pins the detection command, not the
+# precedence rules that are the actual substance of this subsection. Pin the
+# never-delete-rename-or-reorder rule directly.
+if grep -q 'delete, rename, or reorder' "$SWEEP"; then
+  pass "sweep skill: the PR template's headings may not be deleted, renamed, or reordered"
+else
+  fail "sweep skill: the PR template's headings may not be deleted, renamed, or reordered" \
+    "the 'delete, rename, or reorder' rule is missing"
+fi
+
+# And the no-blank-section rule, so a genuinely inapplicable template section still
+# gets an explicit N/A instead of silently vanishing.
+if grep -q 'N/A — <reason>' "$SWEEP"; then
+  pass "sweep skill: an inapplicable template section is marked N/A, never deleted"
+else
+  fail "sweep skill: an inapplicable template section is marked N/A, never deleted" \
+    "the 'N/A — <reason>' rule is missing"
 fi
