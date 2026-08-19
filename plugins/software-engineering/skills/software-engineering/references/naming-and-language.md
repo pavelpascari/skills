@@ -67,6 +67,68 @@ for chunk in chunked(items, 200):
 
 ---
 
+## Judging a comment in review
+
+**Rule:** The rule above tells an author what to write. This one tells a reviewer what to do with
+what is already there. Every comment in front of you gets exactly one of three verdicts — **keep**,
+**noise**, or **it lies** — and two questions decide it:
+
+1. **Would deleting this lose information not recoverable from the code?** If no, it is noise.
+2. **If the code changed, would this silently become wrong?** If yes, it carries drift risk, and it
+   has to be load-bearing enough to be worth carrying.
+
+**Why:** A comment is the only part of a change that no compiler, linter, or test can check. Every
+other claim in a diff is verified by something; this one is verified by a reader noticing, which is
+why comments rot silently and why the rot survives review.
+
+The three verdicts are not equally severe, and the ranking is the point. Noise costs a reader a few
+seconds. **A comment that has drifted is not noise — it is a lie**, and it actively sends the reader
+somewhere the code does not go. It is *worse* than no comment at all, because the reader who had no
+comment would have read the code. This is *code must never lie*, with the comment as the subject.
+
+**Where drift actually hides — and why "review the comments in the diff" misses it.** A comment goes
+stale precisely *because* the code moved and the comment did not, so **the stale comment is usually
+not in the diff.** It sits unchanged beside changed code. Reviewing only changed comment lines
+catches the rewrites and misses every genuine drift.
+
+**How to apply:**
+- Read every comment in a changed hunk *and its enclosing function or block*, including comments the
+  diff did not touch. Ask, of each: does this still describe what the code now does?
+- For a docstring on a public API, ask something stricter: does it state the **contract** — inputs,
+  failure modes, invariants, units — or does it restate the signature? `Returns the user's name` on
+  `fun userName(): String` restates. `Returns null when the account is soft-deleted` is a contract.
+- A comment explaining code that was deleted is drift, not leftovers. Delete it in the same change.
+- When a comment is noise, prefer renaming over deleting-and-moving-on: if the comment was needed to
+  understand the line, the name was doing too little.
+
+**Red flags:**
+- A comment that describes a fallback, branch, or parameter the diff removed.
+- A comment restating a signature, sitting on a public API, mistaken for documentation because it
+  is formatted as a docstring.
+- "As above", "see below", or a reference to a line number — all of which break silently on any edit.
+- A comment that would need updating every time a nearby constant changes. Either derive it from the
+  constant, or drop it.
+- A reviewer approving a diff whose comments were never read as part of the review.
+
+**Example:**
+```kotlin
+// Drifted — the fallback it describes was deleted two commits ago. Worse than nothing:
+// it tells the next reader to look for behaviour that is not there.
+// Falls back to the cached value when the upstream call fails.
+val rate = upstream.fetchRate()
+
+// Noise — recoverable from the code. Delete, or rename `p` if that was the real problem.
+// Multiply price by quantity.
+val total = p * q
+
+// Keep — a constraint no reader could infer, and the code cannot state it.
+// Upstream rate-limits above 200 items per call; chunking here, not at the caller,
+// because the caller's page size is user-configurable.
+items.chunked(200).forEach(upstream::send)
+```
+
+---
+
 ## Code must never lie
 
 **Rule:** Code, names, comments, tests, log messages, and error strings must accurately reflect what is actually happening. A misleading name, a stale comment, a passing test that doesn't actually verify the behavior — all of these are lies the reader trusts, and the wrong fix follows.
