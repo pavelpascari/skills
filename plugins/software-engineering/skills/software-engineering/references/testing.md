@@ -128,23 +128,58 @@ test was written to prevent. `Duration.ofHours(12).toMinutes()` is 720, which is
 so a TTL assertion written that way accepts a 60x cut that would quietly dismantle a cache. The
 only way to know an assertion binds is to make it fail on purpose.
 
-**How to apply:**
-- Pick the regression a reader would most plausibly introduce: a unit swap, an off-by-one, a
-  flipped comparison, a removed guard.
-- Apply it, run the test, confirm red for the right reason, revert.
-- If it stays green, the assertion is decorative. Tighten it and repeat.
-- Worth doing for any assertion guarding a value where the *magnitude* matters, not just presence.
+**How to apply:** work a fixed catalogue, do not improvise. "Pick the regression you'd plausibly
+introduce" sounds equivalent and is not: it inherits the blind spot that produced the weak assertion
+in the first place. Someone who wrote `isGreaterThan(0)` while thinking about presence will pick a
+mutation that presence-checking survives, confirm red, and learn nothing. A fixed list does not
+share your blind spot — that is the entire value of it, and the only part of mutation testing you
+need tooling to *scale*, not to *do*.
+
+Apply each of these to the code under test, one at a time, running the tests after each:
+
+| operator | example |
+|---|---|
+| shift a boundary | `<` ↔ `<=`, `>` ↔ `>=` |
+| negate a condition | `if (x)` → `if (!x)` |
+| replace the return value | return a zero, empty, or default instead of the computed value |
+| swap an operator or unit | `+` ↔ `-`, seconds ↔ minutes, `&&` ↔ `\|\|` |
+| delete a statement | remove a guard, a write, or a call whose effect should be observable |
+| replace a constant | `0`, `1`, `-1`, or the neighbouring value |
+
+**Scope it, or you will not do it.** Six operators against every changed line is not affordable by
+hand, and a discipline you abandon is worth less than a smaller one you keep. Apply the catalogue to
+the lines the change is *about* — the guard, the branch, the computed value — and skip plumbing.
+Prioritise the code where a silently wrong answer is expensive: money, time, permissions, retention.
+
+**A surviving mutation is a finding, and it has a precise shape:** the tests do not pin that
+behaviour. Not "coverage is thin" — *this specific change is invisible to the suite*. Two honest
+endings, and only two:
+- Add the assertion that kills it, then re-run to confirm it now dies.
+- Or state why the mutation is **equivalent** — it cannot change observable behaviour, so no test
+  could kill it. Write that down where the next reader will see it.
+
+"I could not kill it" is not a third ending. Unwritten, it is indistinguishable from never having
+tried — the same reason a deferred review finding has to be recorded rather than remembered.
 
 **Red flags:**
 - An assertion on a duration, size, or count that only checks the sign.
 - "The test passes" offered as evidence a fix works, with no red state ever observed.
 - A boundary guard with a rejection test but no smallest-legal-value test — `> 1` written where
   `> 0` was meant passes the first and fails only the second.
+- A mutation that survived and was neither killed nor written down as equivalent.
+- Every mutation tried happened to be one the tests already caught — a sign the catalogue was
+  skipped and the plausible-looking change was improvised instead.
+- High coverage cited as evidence the tests are strong. Coverage counts lines executed; this counts
+  behaviours pinned, and the two diverge exactly where it matters.
 
-**The obvious wrong change is language-specific** — what to break, per language, is in
-`references/languages/<language>.md` under *Testing*. If a test stays green through that
-language's version of the obvious regression, it is pinning that a code path ran, not what it
-produced.
+**How each operator renders is language-specific** — the concrete form to apply, per language, is in
+`references/languages/<language>.md` under *Testing*. If a test stays green through that language's
+version of these mutations, it is pinning that a code path ran, not what it produced.
+
+**Tooling, if you ever want it:** this is mutation testing done by hand, and every mainstream
+language has a tool that generates these operators exhaustively rather than six at a time. Worth
+reaching for when a codebase is large enough that hand-application stops being credible — but the
+catalogue above is the part that changes how you write tests, and it needs no tooling at all.
 
 ---
 

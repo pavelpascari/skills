@@ -4,7 +4,7 @@ Language-specific notes. The principles live in the topic references; this file 
 
 ## Testing
 - If a fix involves async behaviour, use `await expect(...).rejects.toThrow(...)` — easy to get wrong, and a missing `await` makes the assertion vacuous.
-- To verify an assertion binds: return `undefined` from the function, or mentally replace `toEqual` with `toMatchObject` and ask whether the extra fields would still have been caught.
+- **Applying the mutation catalogue**: *replace the return value* — return `undefined`; *shift a boundary* — `<` → `<=`; *negate a condition* in a guard. Also worth the thought experiment: replace `toEqual` with `toMatchObject` and ask whether the extra fields would still have been caught.
 
 ## Errors
 - JS errors are stringly-typed, so define a discriminated union (`type Result<T, E> = ...`) or use a library (neverthrow, fp-ts) to get an explicit error channel.

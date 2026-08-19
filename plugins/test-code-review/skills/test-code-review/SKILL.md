@@ -108,17 +108,34 @@ assertThat(ttl).isCloseTo(EXPECTED_TTL_SECONDS, within(5L))
 The same shape recurs as `assertNotNull` where the value matters, `hasSizeGreaterThan(0)` where the
 count matters, and "no exception thrown" where the result matters.
 
-**Verify the test by breaking the code.** When you cannot tell whether an assertion is real, make
-the obvious wrong change to the implementation, run the test, and confirm it fails. Then revert.
+**Verify the test by breaking the code.** When you cannot tell whether an assertion is real, mutate
+the implementation, run the test, and confirm it fails. Then revert.
+
+Work a fixed catalogue rather than picking the change that seems most plausible — improvising
+inherits the blind spot that produced the weak assertion. Someone who wrote `isGreaterThan(0)` while
+thinking about presence will pick a mutation that presence-checking survives, see red, and learn
+nothing. Apply these one at a time:
+
+- shift a boundary (`<` ↔ `<=`)
+- negate a condition
+- replace the return value with a zero, empty, or default
+- swap an operator or unit (seconds ↔ minutes)
+- delete a statement whose effect should be observable
+- replace a constant with its neighbour
 
 ```
-1. Change Duration.ofHours(ttlHours).toSeconds() to .toMinutes()
+1. Change Duration.ofHours(ttlHours).toSeconds() to .toMinutes()   [swap a unit]
 2. Run the test — it must fail
 3. Revert
 ```
 
 A test that still passes against deliberately broken code is not protecting anything, and the fact
-it was green told you nothing. Report it as a finding.
+it was green told you nothing. Report the surviving mutation as a finding, naming which operator
+survived — that says precisely which behaviour is unpinned, where "coverage is thin" does not.
+
+Scope this to the lines the change is about, not every changed line. The fuller treatment, including
+when a surviving mutation is genuinely *equivalent* and cannot be killed, is in the companion
+`software-engineering` plugin under *verify the test by breaking the code*.
 
 **Boundary pairs for guards.** A new validation guard needs two tests, not one: rejection just
 outside the legal range, and acceptance at the smallest legal value. Only the second catches a

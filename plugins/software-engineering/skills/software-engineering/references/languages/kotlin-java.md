@@ -5,7 +5,7 @@ Language-specific notes. The principles live in the topic references; this file 
 ## Testing
 - JUnit 5's `assertThrows<T> { }` **returns** the exception — assert on its message, otherwise any `T` thrown from anywhere in the block satisfies the test.
 - `@ParameterizedTest` with `@ValueSource` covers the boundary pair (largest rejected value, smallest accepted one) in one test.
-- To verify an assertion binds: swap a `Duration` unit (`toSeconds()` → `toMinutes()`), or delete a `require`. `isGreaterThan(0)` and `isNotNull()` survive both; `isCloseTo(expected, within(...))` does not — `Duration.ofHours(12).toMinutes()` is 720, a 60× error that passes a sign check.
+- **Applying the mutation catalogue**: *swap a unit* — `toSeconds()` → `toMinutes()`; *delete a statement* — remove a `require`; *shift a boundary* — `>` → `>=` in a guard. `isGreaterThan(0)` and `isNotNull()` survive the first two; `isCloseTo(expected, within(...))` does not — `Duration.ofHours(12).toMinutes()` is 720, a 60× error that passes a sign check.
 
 ## Errors
 - A sealed class or interface gives the boundary an exhaustive `when` over the failure cases, checked by the compiler.
