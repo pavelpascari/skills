@@ -76,6 +76,11 @@ No entry survives the sweep undecided — that is the whole mechanism. Dispositi
 
 If the file does not exist, note "no ledger" and continue. It is not evidence of anything.
 
+**Keep the ledger out of git.** Ensure it is gitignored before the first write to
+`docs/deferred-review-flags.md` — whether this sweep is the one creating the file, or finds it
+already present but untracked and unignored. It is a working document, not a reviewable artifact;
+no PR should carry a diff of someone else's deferred findings.
+
 ### Pass 2 — Failure-mode enumeration (sub-agent)
 
 For every new or changed operation that can fail — external I/O, batched or pipelined operations,

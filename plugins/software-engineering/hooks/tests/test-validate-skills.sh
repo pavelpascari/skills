@@ -48,6 +48,15 @@ else
   fail "sweep skill: size-independence is stated" "the size-independence rule is missing"
 fi
 
+# The ledger is a working document, not a reviewable artifact — Pass 1 must gitignore it
+# before the first write, or a PR ends up carrying a diff of someone else's deferred findings.
+if grep -q 'gitignored before the first write' "$SWEEP"; then
+  pass "sweep skill: Pass 1 gitignores the ledger before the first write"
+else
+  fail "sweep skill: Pass 1 gitignores the ledger before the first write" \
+    "the 'gitignored before the first write' instruction is missing from Pass 1"
+fi
+
 # The global "don't just check what was handed forward" constraint — the substance of
 # rule 1, not just its heading, so trimming the explanation still fails this.
 if grep -q 'never "nothing to check"' "$SWEEP"; then

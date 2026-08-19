@@ -25,9 +25,12 @@ These apply always. If you find yourself about to violate one, stop and reconsid
 2. **Bug fix = reproduce-then-fix.** Every bug fix begins with a failing test that demonstrates the bug. See `references/testing.md`.
 3. **Never merge to main without a PR.** All changes go through review. See `references/process-and-review.md`.
 4. **Definition of done is a chain, not a checkbox.** See `references/process-and-review.md`.
-5. **Deferred findings are recorded, not dropped.** When any review step notices something and
-   rules it out of scope, append it to `docs/deferred-review-flags.md` before moving on. See
-   `references/process-and-review.md`.
+5. **A written deferral goes on the ledger.** When a review step's own output records a judgement —
+   "out of scope", "not blocking", "worth flagging but inherited" — append it to
+   `docs/deferred-review-flags.md` before moving on; the rule is checkable against that written
+   judgement, not against what someone privately noticed. The ledger is best-effort, not the
+   guarantee — the pre-review sweep's failure-mode pass re-derives from the diff every time, and
+   that is what actually guarantees coverage. See `references/process-and-review.md`.
 
 ## Code design
 

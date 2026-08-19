@@ -81,8 +81,11 @@ phrase names a catch with no logging and no considered decision — the failure 
 and execution proceeds as though nothing happened. A contained path is the opposite: the blast
 radius was named, the catch is deliberate, the degraded outcome is logged, and the choice is
 documented. It is exactly the "unless the default is genuinely the right behavior (and document
-why)" exception that section already carves out — this section is what earning that exception looks
-like in practice.
+why)" exception that section already carves out — generalized past that phrasing's literal
+*return default*: a best-effort background write that fails has no value to default at all, only a
+log line and a stop, but the same test applies — was the catch deliberate, logged, and its
+degraded outcome documented as the right one. This section is what earning that exception looks
+like in practice, void operations included.
 
 **How to apply:**
 - For each new external call, batched operation, background callback, or metrics supplier, write
