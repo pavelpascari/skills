@@ -20,6 +20,16 @@ assert_contains "prompt-submit: the DoD reminder mentions the deferral ledger" \
   "$REPO" "$SCRIPT" "$(prompt_json "implement the retry logic")" \
   "deferred-review-flags.md"
 
+# --- output-format contract: stdout must be JSON with a systemMessage key (finding 1) ---
+# Same contract as pre-pr-sweep-check.sh: hooks.json wires this straight into Claude Code's
+# hook protocol, which expects `{"systemMessage": "..."}`.
+out="$(run_hook_in "$REPO" "$SCRIPT" "$(prompt_json "implement the retry logic")")"
+if printf '%s' "$out" | jq -e 'type == "object" and has("systemMessage")' >/dev/null 2>&1; then
+  pass "prompt-submit: stdout is JSON with a systemMessage key"
+else
+  fail "prompt-submit: stdout is JSON with a systemMessage key" "got: $out"
+fi
+
 # --- regression: malformed/absent JSON must not exit non-zero (mirrors
 # pre-pr-sweep-check.sh's fix — see test-pre-pr-sweep.sh review finding 6) ---
 # jq exits non-zero on a parse error; a bare `var=$(jq ...)` assignment left
