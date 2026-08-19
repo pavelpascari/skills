@@ -67,6 +67,21 @@ fi
 
 # Extract the commit message: prefer the -m argument; otherwise, fall back to .git/COMMIT_EDITMSG.
 #
+# Git accepts `-m` both with a space before its value (`-m "text"`) and
+# attached directly to it (`-m"text"`, `-m'text'`, bare `-mtext`) — the
+# spaced-only pattern this used to have (`-m[[:space:]]+(...)`) silently
+# missed every attached form, extracting an empty message and skipping the
+# fix heuristic on an entirely ordinary `git commit -m"fix: ..."`. The
+# `(^|[[:space:]])` prefix anchors `-m` to a real flag boundary (start of
+# line or preceded by whitespace) so the literal substring "-m" inside
+# `--message` is never mistaken for this flag; `--message`/`--message=...`
+# is a different flag and is deliberately not matched here (out of scope for
+# this fix). The three value alternatives — double-quoted, single-quoted, or
+# bare — apply whether or not a space preceded them, and the quoted
+# alternatives only terminate on their own matching closing quote, so an
+# `-m` appearing inside the message text itself (already inside a quote) is
+# just message content, not a second flag boundary.
+#
 # `grep -oE` legitimately finds no match on any commit with no `-m` (`git
 # commit`, `--amend`, `-a`, ...) and exits 1. Under `pipefail` that failure
 # is the whole pipeline's exit status even though `sed`/`head` downstream
@@ -76,7 +91,7 @@ fi
 # on the pipeline lets a "no match" resolve to an empty $message instead,
 # matching the `staged=$(git diff --cached ... || true)` guard later in this
 # script.
-message=$(echo "$joined" | grep -oE -- '-m[[:space:]]+("[^"]*"|'"'"'[^'"'"']*'"'"'|[^[:space:]]+)' | sed -E 's/^-m[[:space:]]+//; s/^["'"'"']//; s/["'"'"']$//' | head -1 || true)
+message=$(echo "$joined" | grep -oE -- "(^|[[:space:]])-m([[:space:]]+(\"[^\"]*\"|'[^']*'|[^[:space:]]+)|\"[^\"]*\"|'[^']*'|[^[:space:]\"']+)" | sed -E 's/^[[:space:]]?-m[[:space:]]*//; s/^["'"'"']//; s/["'"'"']$//' | head -1 || true)
 if [ -z "$message" ] && [ -r .git/COMMIT_EDITMSG ]; then
   # Guarded for the same reason, even though a file already passed `-r` is
   # very unlikely to fail to read: keep every command that reads external

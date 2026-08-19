@@ -129,3 +129,67 @@ assert_contains "bug-fix: line-continued 'git commit' still warns" \
   "$REPO" "$SCRIPT" "$(bash_json "$CONTINUED_COMMIT_CMD")" \
   "no test changes"
 rm -rf "$REPO"
+
+# --- regression: git's attached short-option `-m` forms must still arm the
+# tripwire (sweep-3 blocking finding 1) ---
+# The extraction regex required whitespace between `-m` and its value
+# (`-m[[:space:]]+(...)`), but git also accepts the attached form with no
+# space: `-m"text"`, `-m'text'`, and bare `-mtext` all work and record that
+# subject on an ordinary git invocation. Each previously extracted an empty
+# message, skipped the fix heuristic, and exited silently — the hook's single
+# purpose, bypassed by a perfectly normal commit.
+REPO="$(make_repo)"
+printf 'x\n' > "$REPO/handler.go"
+git -C "$REPO" add handler.go
+assert_contains "bug-fix: attached double-quoted -m ('-m\"...\"') still warns" \
+  "$REPO" "$SCRIPT" "$(bash_json 'git commit -m"fix: nil pointer"')" \
+  "no test changes"
+rm -rf "$REPO"
+
+REPO="$(make_repo)"
+printf 'x\n' > "$REPO/handler.go"
+git -C "$REPO" add handler.go
+assert_contains "bug-fix: attached single-quoted -m still warns" \
+  "$REPO" "$SCRIPT" "$(bash_json "git commit -m'fix: nil pointer'")" \
+  "no test changes"
+rm -rf "$REPO"
+
+REPO="$(make_repo)"
+printf 'x\n' > "$REPO/handler.go"
+git -C "$REPO" add handler.go
+assert_contains "bug-fix: attached bare -m ('-mfix') still warns" \
+  "$REPO" "$SCRIPT" "$(bash_json "git commit -mfix")" \
+  "no test changes"
+rm -rf "$REPO"
+
+# An `-m` appearing inside the commit message text itself must not confuse
+# the extraction into truncating early or splitting the message. The quoted
+# alternatives only terminate on their own matching closing quote, so an
+# embedded "-m" mid-message is just ordinary text, not a second flag boundary.
+REPO="$(make_repo)"
+printf 'x\n' > "$REPO/handler.go"
+git -C "$REPO" add handler.go
+assert_contains "bug-fix: -m embedded inside the quoted message text does not confuse extraction" \
+  "$REPO" "$SCRIPT" "$(bash_json 'git commit -m "fix: document the -m flag behavior"')" \
+  "no test changes"
+rm -rf "$REPO"
+
+# --- output-format contract: stdout must be JSON with a systemMessage key
+# (sweep-3 blocking finding 2) ---
+# hooks.json wires this script's stdout straight into Claude Code's hook
+# protocol, which expects `{"systemMessage": "..."}` — a malformed key (e.g. a
+# typo'd "systemMesage") is silently dropped by the harness rather than shown
+# to the agent, and no existing assertion here would catch that: assert_contains
+# only checks a substring appears somewhere in stdout, not that stdout is
+# valid, correctly-keyed JSON. Mirrors the same assertion in
+# test-pre-pr-sweep.sh and test-prompt-submit.sh.
+REPO="$(make_repo)"
+printf 'x\n' > "$REPO/handler.go"
+git -C "$REPO" add handler.go
+out="$(run_hook_in "$REPO" "$SCRIPT" "$(bash_json "git commit -m 'fix: handle nil pointer'")")"
+if printf '%s' "$out" | jq -e 'type == "object" and has("systemMessage")' >/dev/null 2>&1; then
+  pass "bug-fix: stdout is JSON with a systemMessage key"
+else
+  fail "bug-fix: stdout is JSON with a systemMessage key" "got: $out"
+fi
+rm -rf "$REPO"
