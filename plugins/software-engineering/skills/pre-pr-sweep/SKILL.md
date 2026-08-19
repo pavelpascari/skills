@@ -306,15 +306,25 @@ to begin with, so it sits outside this rule rather than violating it.
 >
 > <the pass brief, verbatim from above>
 >
-> Assume this code has an unhandled failure and find it. If you are uncertain whether something is
-> a finding, report it.
+> <the adversarial framing for this pass — see below>
 >
-> Every finding MUST carry: `file:line`, and a concrete failure scenario — specific inputs or state
-> leading to a specific wrong outcome. A finding you cannot write a scenario for will be discarded,
-> so do not pad. Do not ask about intent; judge the code in front of you.
+> If you are uncertain whether something is a finding, report it.
+>
+> <the evidence requirement for this pass — see below>
+> A finding you cannot state that way will be discarded, so do not pad. Do not ask about intent;
+> judge what is in front of you.
 
-**Noise control.** Discard findings without a concrete failure scenario, and report how many were
-discarded. A pass that systematically over-flags should be visible, not invisible.
+**The framing and the evidence requirement are per-pass**, because the passes do not all hunt the
+same thing. Substituting the wrong pair produces an agent looking for failure scenarios in a
+comment, or accepting a bug report with no repro:
+
+| pass | adversarial framing | evidence requirement |
+|---|---|---|
+| 2, 3, 4, 5 | "Assume this code has an unhandled failure and find it." | `file:line`, plus a concrete failure scenario — specific inputs or state leading to a specific wrong outcome. |
+| 5b | "Assume a comment here is lying about the code beside it, and find it." | `file:line`, plus a quote of what the comment claims and a statement of what the code actually does instead. |
+
+**Noise control.** Discard findings that do not meet the pass's evidence requirement, and report how
+many were discarded. A pass that systematically over-flags should be visible, not invisible.
 
 **A pass that returns nothing** is reported as "pass N did not complete" — never silently treated
 as "no findings". A silent empty pass is the failure mode this skill exists to eliminate.
