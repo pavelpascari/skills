@@ -7,6 +7,14 @@ PLUGIN_ROOT="$(dirname "$HOOKS_DIR")"
 PASS_COUNT=0
 FAIL_COUNT=0
 
+# Side channel for run_hook_in to report exit status / stderr back to its
+# caller. A command-substitution capture (`out="$(run_hook_in ...)"`) only
+# sees stdout, so status and stderr are written to these scratch files
+# instead. Cleaned up when the sourcing shell (run-tests.sh) exits.
+_HOOK_STATUS_FILE="$(mktemp)"
+_HOOK_STDERR_FILE="$(mktemp)"
+trap 'rm -f "$_HOOK_STATUS_FILE" "$_HOOK_STDERR_FILE"' EXIT
+
 pass() {
   printf 'ok    %s\n' "$1"
   PASS_COUNT=$((PASS_COUNT + 1))
@@ -44,19 +52,43 @@ prompt_json() {
 # run_hook_in <dir> <script> <json> -> the hook's stdout
 # A missing script must not read as "silent" — that would make every
 # assert_silent case pass vacuously against a script nobody wrote yet.
+# Also records the hook's exit status (in $_HOOK_STATUS_FILE) and stderr
+# (in $_HOOK_STDERR_FILE): hooks run under their own `set -euo pipefail`,
+# so an unguarded failing `grep`/`git` inside a hook exits non-zero with
+# empty stdout — indistinguishable from an intentional silent success
+# unless the caller also checks the exit status.
 run_hook_in() {
-  if [ ! -r "$2" ]; then
-    printf 'HOOK SCRIPT MISSING: %s' "$2"
+  local dir="$1" script="$2" json="$3"
+
+  if [ ! -r "$script" ]; then
+    printf '0' > "$_HOOK_STATUS_FILE"
+    : > "$_HOOK_STDERR_FILE"
+    printf 'HOOK SCRIPT MISSING: %s' "$script"
     return 0
   fi
-  ( cd "$1" && printf '%s' "$3" | bash "$2" 2>/dev/null )
+
+  if [ ! -d "$dir" ]; then
+    printf '1' > "$_HOOK_STATUS_FILE"
+    printf 'FIXTURE DIRECTORY MISSING: %s' "$dir" > "$_HOOK_STDERR_FILE"
+    return 0
+  fi
+
+  local out status
+  out="$(cd "$dir" && printf '%s' "$json" | bash "$script" 2>"$_HOOK_STDERR_FILE")"
+  status=$?
+  printf '%s' "$status" > "$_HOOK_STATUS_FILE"
+  printf '%s' "$out"
 }
 
 # assert_silent <name> <dir> <script> <json>
 assert_silent() {
-  local out
+  local out status err
   out="$(run_hook_in "$2" "$3" "$4")"
-  if [ -z "$out" ]; then
+  status="$(cat "$_HOOK_STATUS_FILE")"
+  err="$(cat "$_HOOK_STDERR_FILE")"
+  if [ "$status" != "0" ]; then
+    fail "$1" "hook exited $status (expected 0); stdout: $out; stderr: $err"
+  elif [ -z "$out" ]; then
     pass "$1"
   else
     fail "$1" "expected no output, got: $out"
@@ -65,8 +97,14 @@ assert_silent() {
 
 # assert_contains <name> <dir> <script> <json> <needle>
 assert_contains() {
-  local out
+  local out status err
   out="$(run_hook_in "$2" "$3" "$4")"
+  status="$(cat "$_HOOK_STATUS_FILE")"
+  err="$(cat "$_HOOK_STDERR_FILE")"
+  if [ "$status" != "0" ]; then
+    fail "$1" "hook exited $status (expected 0); stdout: $out; stderr: $err"
+    return
+  fi
   case "$out" in
     *"$5"*) pass "$1" ;;
     *) fail "$1" "expected output containing '$5', got: $out" ;;
