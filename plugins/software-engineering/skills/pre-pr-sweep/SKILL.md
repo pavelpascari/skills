@@ -134,6 +134,100 @@ Mechanical, run here:
   the fast checks still go green — which makes an untested stack look tested. Verify with
   `gh run list --branch <branch>`, and record the answer under `## Verification caveats`.
 
+### Pass 7 — PR narrative and reviewer hints
+
+The only pass that **produces content** rather than reporting findings: it assembles the PR body.
+It runs **after** passes 2–5, because its risk list is derived from their findings.
+
+**Every PR answers three questions**, stacked or standalone:
+
+1. **Why this change is valuable on its own.** Not what it changes — what it buys. A body that
+   restates the diff gives the reviewer nothing the diff does not already say.
+2. **What it depends on.** Parent PR or branch, and the ticket.
+3. **What builds on it next.** Child PRs, planned follow-ups, and why this piece was worth
+   separating. This one still applies when nothing is stacked behind it yet.
+
+**Stack detection:**
+
+```bash
+git log origin/main..HEAD --oneline
+gh pr list --author @me --state open --json number,title,headRefName,baseRefName
+```
+
+Siblings are the open PRs sharing this change's ticket prefix; the parent is whichever sibling
+branch is the merge-base of this one.
+
+**Cross-PR collision check.** For each sibling, compare changed files and top-level symbols against
+this PR's. Surface every overlap in the body, so whoever merges second knows what they are
+resolving before they hit it.
+
+#### `## How to review`
+
+A reviewer opens a diff sorted alphabetically, every hunk weighted equally, with no idea what the
+author already checked. Fix that with four parts:
+
+1. **Reading order.** Entry point → core change → tests, as a path list. Alphabetical is almost
+   never the comprehension order.
+2. **Where the risk is.** The specific hunks that deserve real scrutiny, and why each one is the
+   risky one.
+3. **What was verified, and how.** Commands run, environments hit, evidence produced — so the
+   reviewer does not silently redo it. Paired with **what was not verified**, stated plainly.
+4. **Questions for the reviewer.** The genuine tradeoffs decided unilaterally, in the form the
+   *Decisions* principle already requires: "I picked X over Y because Z; happy to flip."
+
+**Hints point toward risk, never away from it.** A description that tells a reviewer which files
+are boring is a laundering mechanism, and worse than no hints at all. Three constraints:
+
+- No "you can skip", "this part is mechanical", or "no need to look at" phrasing.
+- The risk list **may not be empty**. If no hunk in the change can be named as the risky one, that
+  is a finding — not a clean bill of health.
+- The risk list is **not authored freehand**. Derive it from passes 2–5's findings, *including the
+  ones dispositioned `ACCEPTED`*. An accepted deferral becomes an explicit review target instead of
+  a quietly buried one.
+
+#### The repo's PR template wins
+
+Before composing anything, look for one:
+
+```bash
+ls .github/pull_request_template.md \
+   .github/PULL_REQUEST_TEMPLATE.md \
+   .github/PULL_REQUEST_TEMPLATE/*.md \
+   docs/pull_request_template.md \
+   .gitlab/merge_request_templates/*.md 2>/dev/null
+```
+
+If one exists it defines the structure, and this pass fills it in:
+
+- **Never** delete, rename, or reorder the template's headings.
+- Where a template heading already covers one of the obligations below, fill it **there** instead
+  of adding a parallel heading. `## Description` gets the *why*; `## Testing` or `## Review Focus`
+  gets the verification and risk content.
+- Only obligations with no home in the template get appended, as new sections at the end.
+- Leave no template section blank. If one genuinely does not apply, write `N/A — <reason>` rather
+  than deleting it.
+
+This is *Decisions* applied to the PR body: defer to team conventions first. A sweep that replaced
+a team's template with its own structure would be a convention violation dressed up as
+thoroughness.
+
+#### Assembled body
+
+The default shape when the repo has **no** template. With a template present, these are
+**obligations to place**, not headings to emit.
+
+| Section | Fed by |
+|---|---|
+| `## Why` / `## Stack` / `## What's next` | this pass |
+| `## How to review` | this pass; risk list derived from passes 2–5 |
+| `## Deferred` | pass 1 dispositions |
+| `## Verification caveats` | pass 6 |
+
+**Why this pass keeps its context**, when 2–5 are blinded: articulating intent *is* the task here,
+so it needs the brief, the ticket, and the stack plan. The blind passes judge the code; this one
+explains it. Neither gets to do the other's job — if that boundary blurs, the blinding stops being
+worth anything.
+
 ## Context-blind sub-agents
 
 Passes 2–5 each spawn a `general-purpose` sub-agent. A fresh context — not a fork.
@@ -157,8 +251,10 @@ as rationale, but as a work list of facts derived from the same diff, because pa
 checking test coverage *against* enumerated failure modes rather than hunting blind. The bias the
 blinding exists to prevent is the *author's* rationale, which lets a reviewer accept a
 justification instead of judging the code in front of it; a sibling pass's enumerated findings are
-not rationale, so this flow does not reintroduce that bias. No other pass receives another pass's
-output — this is the only permitted cross-pass flow.
+not rationale, so this flow does not reintroduce that bias. No other **sub-agent** pass receives
+another pass's output — this is the only permitted cross-pass flow among the blind passes. Pass 7
+later reads all of 2–5's findings by design, but it runs in the main context and was never blind
+to begin with, so it sits outside this rule rather than violating it.
 
 **Prompt template:**
 

@@ -34,7 +34,7 @@ else
     "the forbidden-inputs list no longer says 'MUST NOT read the ledger'"
 fi
 
-for pass_name in "Pass 0" "Pass 1" "Pass 2" "Pass 3" "Pass 4" "Pass 5" "Pass 6"; do
+for pass_name in "Pass 0" "Pass 1" "Pass 2" "Pass 3" "Pass 4" "Pass 5" "Pass 6" "Pass 7"; do
   if grep -q "### $pass_name" "$SWEEP"; then
     pass "sweep skill: $pass_name is documented"
   else
@@ -74,4 +74,34 @@ if grep -q 'work list of facts derived from the same diff' "$SWEEP"; then
 else
   fail "sweep skill: the pass-4 findings carve-out is explained, not just asserted" \
     "the 'work list of facts derived from the same diff' sentence is missing"
+fi
+
+# Reviewer hints may point toward risk, never away from it. If this rule is ever
+# dropped, the hints become a laundering mechanism — pin it.
+if grep -q 'toward risk, never away from it' "$SWEEP"; then
+  pass "sweep skill: hints may not steer attention away from risk"
+else
+  fail "sweep skill: hints may not steer attention away from risk" \
+    "the 'toward risk, never away from it' rule is missing"
+fi
+
+if grep -q 'may not be empty' "$SWEEP"; then
+  pass "sweep skill: the risk list is required to be non-empty"
+else
+  fail "sweep skill: the risk list is required to be non-empty" \
+    "the non-empty risk-list rule is missing"
+fi
+
+if grep -q '## How to review' "$SWEEP"; then
+  pass "sweep skill: the How to review section is specified"
+else
+  fail "sweep skill: the How to review section is specified" "no '## How to review' in $SWEEP"
+fi
+
+# A repo's own PR template is a team convention and outranks our default shape.
+if grep -q 'pull_request_template' "$SWEEP"; then
+  pass "sweep skill: an existing PR template takes precedence"
+else
+  fail "sweep skill: an existing PR template takes precedence" \
+    "the skill does not look for a repo PR template"
 fi
