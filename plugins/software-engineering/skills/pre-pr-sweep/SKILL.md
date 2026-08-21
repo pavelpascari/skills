@@ -151,7 +151,7 @@ ranked by what it costs to leave in place:
 Judge each against four questions: will it still pay in a year, is it prone to going out of sync, is
 reading it the same as reading the code, and does it belong here rather than in a doc link. The
 companion `software-engineering` skill carries these in full — `comments.md` under its `references/`
-— along with the seven kinds and their individual tests. This pass reports a verdict; that file is
+— along with the kinds of comment and their individual tests. This pass reports a verdict; that file is
 how you reach one. (Written as prose rather than a `references/` pointer on purpose: this skill has
 no `references/` directory, so that syntax would be a path that does not resolve from here.)
 

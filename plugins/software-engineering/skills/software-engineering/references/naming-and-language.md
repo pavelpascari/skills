@@ -35,7 +35,7 @@ class OrderMapper {
 ## Comments
 
 Comments have outgrown this file and live in their own reference: **`references/comments.md`** —
-the four questions that decide whether one earns its place, the seven kinds, and how to judge one
+the questions that decide whether one earns its place, the kinds of comment, and how to judge one
 in review. A comment is often a symptom of a name doing too little, which is why it started here;
 it is now long enough to stand on its own.
 
