@@ -2,8 +2,9 @@
 name: software-engineering
 description: >
   Use during coding work: implementing features, fixing bugs, refactoring, reviewing
-  code, designing APIs, writing tests, building services. Encodes 23 principles
-  covering code design, testing, errors, review process, maintenance, and observability.
+  code, designing APIs, writing tests, building services. Encodes a coherent set of
+  principles covering code design, naming, comments, testing, errors, review process,
+  maintenance, and observability.
 user-invocable: true
 ---
 
@@ -47,8 +48,18 @@ These apply always. If you find yourself about to violate one, stop and reconsid
 → See `references/naming-and-language.md` for details.
 
 - **Ubiquitous language** — domain layer speaks the agreed-upon business language; mapping layer bridges to legacy storage names.
-- **Comments** — docstrings on public APIs; internal code only when WHY is non-obvious.
 - **Code must never lie** — names, comments, tests, logs, and errors must accurately reflect what is actually happening.
+
+## Comments
+
+→ See `references/comments.md` for details.
+
+- **Comments are code** — written, reviewed, maintained, and deleted on the same terms. If one does not add value, it is noise; remove it.
+- **Optimise for the reader a year out** — four questions decide whether a comment earns its place: will it still pay in a year, is it prone to going out of sync, is reading it the same as reading the code, and does it belong here at all.
+- **Write for durability** — prefer formulations that cannot rot. An external constraint outlives a description of the local mechanism.
+- **Never re-document what someone else maintains** — link to the framework's docs and name the concept; keep only the local consequence.
+- **Seven kinds, seven rules** — API contract, why/constraint, landmine, TODO, banner, commented-out code, framework explainer.
+- **Three verdicts in review** — liability (it will rot and misdirect), noise (delete), keep.
 
 ## Testing
 

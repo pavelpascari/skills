@@ -141,11 +141,19 @@ codebase-wide refactor.
 
 ### Pass 5b — Comment value (sub-agent)
 
-Every comment in a changed hunk **and its enclosing function or block** gets one of three verdicts:
+Every comment in a changed hunk **and its enclosing function or block** gets one of three verdicts,
+ranked by what it costs to leave in place:
 
-- **keep** — deleting it would lose information not recoverable from the code
-- **noise** — recoverable from the code; delete it, or rename so it is
-- **it lies** — the code moved and the comment did not
+- **liability** — it will rot and misdirect, or already has: the code moved and the comment did not
+- **noise** — cost with no benefit; recoverable from the code, so delete it or rename so it is
+- **keep** — durable value a reader could not reconstruct
+
+Judge each against four questions: will it still pay in a year, is it prone to going out of sync, is
+reading it the same as reading the code, and does it belong here rather than in a doc link. The
+companion `software-engineering` skill carries these in full — `comments.md` under its `references/`
+— along with the kinds of comment and their individual tests. This pass reports a verdict; that file is
+how you reach one. (Written as prose rather than a `references/` pointer on purpose: this skill has
+no `references/` directory, so that syntax would be a path that does not resolve from here.)
 
 **Read comments the diff did not touch.** A comment goes stale precisely because the code changed
 and the comment did not, so the drifted comment is usually *not* a changed line — it sits unchanged
@@ -159,6 +167,10 @@ failure modes, invariants, units — or restate the signature?
 that has drifted actively sends them where the code does not go, and is worse than no comment,
 because a reader with no comment would have read the code. Report noise as a suggestion, so this
 pass does not become a style-nit generator that reviewers learn to skip.
+
+One kind is worth naming explicitly because it rots on someone else's schedule: a comment explaining
+how a **framework or library** behaves, written in this repo's own words, goes false when they ship,
+with nobody here watching. Flag it as a liability and suggest a link plus the local consequence.
 
 ### Pass 6 — Hygiene
 
