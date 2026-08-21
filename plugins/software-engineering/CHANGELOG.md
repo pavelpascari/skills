@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.5.0](https://github.com/pavelpascari/skills/compare/software-engineering-v1.4.0...software-engineering-v1.5.0) (2026-08-21)
+
+
+### Features
+
+* give comments their own reference, framed for maintainability ([#22](https://github.com/pavelpascari/skills/issues/22)) ([96b861f](https://github.com/pavelpascari/skills/commit/96b861f24b3a23b3b0edc7cfdec4909c5fa349a9))
+
 ## [1.4.0](https://github.com/pavelpascari/skills/compare/software-engineering-v1.3.1...software-engineering-v1.4.0) (2026-08-19)
 
 
