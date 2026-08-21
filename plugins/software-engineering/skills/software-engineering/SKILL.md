@@ -2,8 +2,9 @@
 name: software-engineering
 description: >
   Use during coding work: implementing features, fixing bugs, refactoring, reviewing
-  code, designing APIs, writing tests, building services. Encodes 23 principles
-  covering code design, testing, errors, review process, maintenance, and observability.
+  code, designing APIs, writing tests, building services. Encodes a coherent set of
+  principles covering code design, naming, comments, testing, errors, review process,
+  maintenance, and observability.
 user-invocable: true
 ---
 

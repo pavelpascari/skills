@@ -257,3 +257,22 @@ else
   fail "sweep skill: drifted comments block, noise does not" \
     "the drift-vs-noise severity split is missing"
 fi
+
+# A count stated in prose goes stale silently — this repo shipped "Encodes 23
+# principles" while the actual figure went 23 -> 25 -> 30 across two additions,
+# noticed by nobody. comments.md names seven kinds and three other files repeat
+# the figure, so adding an eighth would leave three of them lying. Derive the
+# count from the headings rather than trusting the prose.
+COMMENTS="$SKILLS_DIR/software-engineering/references/comments.md"
+if [ -r "$COMMENTS" ]; then
+  kind_count=$(grep -cE '^### [0-9]+\. ' "$COMMENTS" || true)
+  claim_files=$(grep -rlF 'seven kinds' "$PLUGIN_ROOT/skills" 2>/dev/null | wc -l | tr -d ' ')
+  if [ "$kind_count" -eq 7 ]; then
+    pass "comments: the seven-kinds claim matches the headings ($claim_files file(s) assert it)"
+  else
+    fail "comments: the seven-kinds claim matches the headings" \
+      "comments.md defines $kind_count kinds but $claim_files file(s) still say 'seven kinds' — update every claim, or drop the count"
+  fi
+else
+  fail "comments: the seven-kinds claim matches the headings" "no comments.md at $COMMENTS"
+fi
