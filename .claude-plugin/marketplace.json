@@ -6,7 +6,7 @@
   },
   "metadata": {
     "description": "A curated Claude Code plugin marketplace by Pavel Pascari",
-    "version": "1.4.0",
+    "version": "1.5.0",
     "pluginRoot": "./plugins"
   },
   "plugins": [
@@ -53,7 +53,7 @@
       "name": "hcampus",
       "source": "./plugins/hcampus",
       "description": "Durable, evidence-backed memory through the hcampus MCP server: a recall/remember/forget skill, a guard that stops secrets from reaching append-only memory, and nudges to recall before acting and persist durable outcomes.",
-      "version": "1.0.0",
+      "version": "1.1.0",
       "author": {
         "name": "Pavel Pascari",
         "email": "pavel@ppascari.com"
