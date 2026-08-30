@@ -53,6 +53,21 @@
           "jsonpath": "$.version"
         }
       ]
+    },
+    "plugins/hcampus": {
+      "package-name": "hcampus",
+      "extra-files": [
+        {
+          "type": "json",
+          "path": "/.claude-plugin/marketplace.json",
+          "jsonpath": "$.plugins[?(@.name == 'hcampus')].version"
+        },
+        {
+          "type": "json",
+          "path": ".claude-plugin/plugin.json",
+          "jsonpath": "$.version"
+        }
+      ]
     }
   }
 }

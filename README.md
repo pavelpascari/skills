@@ -18,8 +18,9 @@ Then install individual plugins:
 
 | Plugin | Description | Version |
 |--------|-------------|---------|
-| [`test-code-review`](./plugins/test-code-review) | Review test code changes for correctness, catching weakened assertions and tests rewritten to match buggy behavior. | 1.0.0 |
-| [`software-engineering`](./plugins/software-engineering) | Encodes a coherent set of software engineering principles to apply during coding tasks, plus a pre-PR sweep that forces deferred findings to a decision and enumerates failure modes before review is requested. | 1.0.0 |
+| [`test-code-review`](./plugins/test-code-review) | Review test code changes for correctness, catching weakened assertions and tests rewritten to match buggy behavior. | 1.2.2 |
+| [`software-engineering`](./plugins/software-engineering) | Encodes a coherent set of software engineering principles to apply during coding tasks, plus a pre-PR sweep that forces deferred findings to a decision and enumerates failure modes before review is requested. | 1.5.0 |
+| [`hcampus`](./plugins/hcampus) | Durable, evidence-backed memory through the hcampus MCP server: a recall/remember/forget skill, a guard that stops secrets from reaching append-only memory, and nudges to recall before acting and persist durable outcomes. | 1.0.0 |
 
 ## Requirements
 
